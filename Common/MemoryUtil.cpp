@@ -220,3 +220,29 @@ void UnWriteProtectMemory(void* ptr, size_t size, bool allowExecute)
 #endif
 }
 
+<<<<<<< HEAD
+=======
+std::string MemUsage()
+{
+#if defined(_WIN32) && !defined(_XBOX)
+#pragma comment(lib, "psapi")
+	DWORD processID = GetCurrentProcessId();
+	HANDLE hProcess;
+	PROCESS_MEMORY_COUNTERS pmc;
+	std::string Ret;
+
+	// Print information about the memory usage of the process.
+
+	hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, processID);
+	if (NULL == hProcess) return "MemUsage Error";
+
+	if (GetProcessMemoryInfo(hProcess, &pmc, sizeof(pmc)))
+		Ret = StringFromFormat("%s K", ThousandSeparate(pmc.WorkingSetSize / 1024, 7).c_str());
+
+	CloseHandle(hProcess);
+	return Ret;
+#else
+	return "";
+#endif
+}
+>>>>>>> a26d584... [xbox] 360 support for common
