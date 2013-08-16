@@ -30,7 +30,9 @@
 #include "Core/System.h"
 #include "Core/MIPS/MIPS.h"
 #ifdef _WIN32
+#ifndef _XBOX
 #include "Windows/OpenGLBase.h"
+#endif
 #include "Windows/InputDevice.h"
 #endif
 
@@ -145,7 +147,7 @@ void Core_RunLoop() {
 	while (globalUIState != UISTATE_INGAME && globalUIState != UISTATE_EXIT) {
 		time_update();
 
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(_XBOX)
 		double startTime = time_now_d();
 		UpdateRunLoop();
 
@@ -162,12 +164,12 @@ void Core_RunLoop() {
 	}
 
 	while (!coreState && globalUIState == UISTATE_INGAME) {
-		time_update();
-		UpdateRunLoop();
-#ifdef _WIN32
-		if (!Core_IsStepping()) {
-			GL_SwapBuffers();
-		}
+			time_update();
+			UpdateRunLoop();
+#if defined(_WIN32) && !defined(_XBOX)
+			if (!Core_IsStepping()) {
+					GL_SwapBuffers();
+			}
 #endif
 	}
 }

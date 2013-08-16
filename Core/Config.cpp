@@ -23,7 +23,9 @@
 #include "Config.h"
 #include "file/ini_file.h"
 #include "i18n/i18n.h"
+#ifndef _XBOX
 #include "gfx_es2/gpu_features.h"
+#endif
 #include "HLE/sceUtility.h"
 #include "Common/CPUDetect.h"
 
