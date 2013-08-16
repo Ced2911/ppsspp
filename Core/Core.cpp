@@ -30,7 +30,9 @@
 #include "Core/System.h"
 #include "Core/MIPS/MIPS.h"
 #ifdef _WIN32
+#ifndef _XBOX
 #include "Windows/OpenGLBase.h"
+#endif
 #include "Windows/InputDevice.h"
 #endif
 
@@ -142,34 +144,34 @@ static inline void UpdateRunLoop() {
 }
 
 void Core_RunLoop() {
-	while (globalUIState != UISTATE_INGAME && globalUIState != UISTATE_EXIT) {
-		time_update();
+        while (globalUIState != UISTATE_INGAME && globalUIState != UISTATE_EXIT) {
+                time_update();
 
-#if defined(_WIN32) && !defined(USING_QT_UI)
-		double startTime = time_now_d();
-		UpdateRunLoop();
+#if defined(_WIN32) && !defined(_XBOX) && !defined(USING_QT_UI)
+                double startTime = time_now_d();
+                UpdateRunLoop();
 
-		// Simple throttling to not burn the GPU in the menu.
-		time_update();
-		double diffTime = time_now_d() - startTime;
-		int sleepTime = (int) (1000000.0 / 60.0) - (int) (diffTime * 1000000.0);
-		if (sleepTime > 0)
-			Sleep(sleepTime / 1000);
-		GL_SwapBuffers();
+                // Simple throttling to not burn the GPU in the menu.
+                time_update();
+                double diffTime = time_now_d() - startTime;
+                int sleepTime = (int) (1000000.0 / 60.0) - (int) (diffTime * 1000000.0);
+                if (sleepTime > 0)
+                        Sleep(sleepTime / 1000);
+                GL_SwapBuffers();
 #else
-		UpdateRunLoop();
+                UpdateRunLoop();
 #endif
-	}
+        }
 
-	while (!coreState && globalUIState == UISTATE_INGAME) {
-		time_update();
-		UpdateRunLoop();
-#if defined(_WIN32) && !defined(USING_QT_UI)
-		if (!Core_IsStepping()) {
-			GL_SwapBuffers();
-		}
+        while (!coreState && globalUIState == UISTATE_INGAME) {
+                time_update();
+                UpdateRunLoop();
+#if defined(_WIN32) && !defined(_XBOX) && !defined(USING_QT_UI)
+                if (!Core_IsStepping()) {
+                        GL_SwapBuffers();
+                }
 #endif
-	}
+        }
 }
 
 void Core_DoSingleStep() {
