@@ -383,73 +383,73 @@ std::string GetSysDirectory(PSPDirectories directoryType) {
 	}
 }
 
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(_XBOX)
 // Run this at startup time. Please use GetSysDirectory if you need to query where folders are.
 void InitSysDirectories() {
-	if (!g_Config.memCardDirectory.empty() && !g_Config.flash0Directory.empty())
-		return;
+        if (!g_Config.memCardDirectory.empty() && !g_Config.flash0Directory.empty())
+                return;
 
-	const std::string path = ConvertWStringToUTF8(File::GetExeDirectory());
+        const std::string path = ConvertWStringToUTF8(File::GetExeDirectory());
 
-	// Mount a filesystem
-	g_Config.flash0Directory = path + "/flash0/";
+        // Mount a filesystem
+        g_Config.flash0Directory = path + "/flash0/";
 
-	// Detect the "My Documents"(XP) or "Documents"(on Vista/7/8) folder.
-	wchar_t myDocumentsPath[MAX_PATH];
-	const HRESULT result = SHGetFolderPath(NULL, CSIDL_PERSONAL, NULL, SHGFP_TYPE_CURRENT, myDocumentsPath);
-	const std::string myDocsPath = ConvertWStringToUTF8(myDocumentsPath) + "/PPSSPP/";
+        // Detect the "My Documents"(XP) or "Documents"(on Vista/7/8) folder.
+        wchar_t myDocumentsPath[MAX_PATH];
+        const HRESULT result = SHGetFolderPath(NULL, CSIDL_PERSONAL, NULL, SHGFP_TYPE_CURRENT, myDocumentsPath);
+        const std::string myDocsPath = ConvertWStringToUTF8(myDocumentsPath) + "/PPSSPP/";
 
-	const std::string installedFile = path + "/installed.txt";
-	const bool installed = File::Exists(installedFile);
+        const std::string installedFile = path + "/installed.txt";
+        const bool installed = File::Exists(installedFile);
 
-	// If installed.txt exists(and we can determine the Documents directory)
-	if (installed && (result == S_OK))	{
-		std::ifstream inputFile(ConvertUTF8ToWString(installedFile));
+        // If installed.txt exists(and we can determine the Documents directory)
+        if (installed && (result == S_OK))        {
+                std::ifstream inputFile(ConvertUTF8ToWString(installedFile));
 
-		if (!inputFile.fail() && inputFile.is_open()) {
-			std::string tempString;
+                if (!inputFile.fail() && inputFile.is_open()) {
+                        std::string tempString;
 
-			std::getline(inputFile, tempString);
+                        std::getline(inputFile, tempString);
 
-			// Skip UTF-8 encoding bytes if there are any. There are 3 of them.
-			if (tempString.substr(0, 3) == "\xEF\xBB\xBF")
-				tempString = tempString.substr(3);
+                        // Skip UTF-8 encoding bytes if there are any. There are 3 of them.
+                        if (tempString.substr(0, 3) == "\xEF\xBB\xBF")
+                                tempString = tempString.substr(3);
 
-			g_Config.memCardDirectory = tempString;
-		}
-		inputFile.close();
+                        g_Config.memCardDirectory = tempString;
+                }
+                inputFile.close();
 
-		// Check if the file is empty first, before appending the slash.
-		if (g_Config.memCardDirectory.empty())
-			g_Config.memCardDirectory = myDocsPath;
+                // Check if the file is empty first, before appending the slash.
+                if (g_Config.memCardDirectory.empty())
+                        g_Config.memCardDirectory = myDocsPath;
 
-		size_t lastSlash = g_Config.memCardDirectory.find_last_of("/");
-		if (lastSlash != (g_Config.memCardDirectory.length() - 1))
-			g_Config.memCardDirectory.append("/");
-	} else {
-		g_Config.memCardDirectory = path + "/memstick/";
-	}
+                size_t lastSlash = g_Config.memCardDirectory.find_last_of("/");
+                if (lastSlash != (g_Config.memCardDirectory.length() - 1))
+                        g_Config.memCardDirectory.append("/");
+        } else {
+                g_Config.memCardDirectory = path + "/memstick/";
+        }
 
-	// Create the memstickpath before trying to write to it, and fall back on Documents yet again
-	// if we can't make it.
-	if (!File::Exists(g_Config.memCardDirectory)) {
-		if (!File::CreateDir(g_Config.memCardDirectory))
-			g_Config.memCardDirectory = myDocsPath;
-	}
+        // Create the memstickpath before trying to write to it, and fall back on Documents yet again
+        // if we can't make it.
+        if (!File::Exists(g_Config.memCardDirectory)) {
+                if (!File::CreateDir(g_Config.memCardDirectory))
+                        g_Config.memCardDirectory = myDocsPath;
+        }
 
-	const std::string testFile = "/_writable_test.$$$";
+        const std::string testFile = "/_writable_test.$$$";
 
-	// If any directory is read-only, fall back to the Documents directory.
-	// We're screwed anyway if we can't write to Documents, or can't detect it.
-	if (!File::CreateEmptyFile(g_Config.memCardDirectory + testFile))
-		g_Config.memCardDirectory = myDocsPath;
+        // If any directory is read-only, fall back to the Documents directory.
+        // We're screwed anyway if we can't write to Documents, or can't detect it.
+        if (!File::CreateEmptyFile(g_Config.memCardDirectory + testFile))
+                g_Config.memCardDirectory = myDocsPath;
 
-	// Clean up our mess.
-	if (File::Exists(g_Config.memCardDirectory + testFile))
-		File::Delete(g_Config.memCardDirectory + testFile);
+        // Clean up our mess.
+        if (File::Exists(g_Config.memCardDirectory + testFile))
+                File::Delete(g_Config.memCardDirectory + testFile);
 
-	if (g_Config.currentDirectory.empty()) {
-		g_Config.currentDirectory = GetSysDirectory(DIRECTORY_GAME);
-	}
+        if (g_Config.currentDirectory.empty()) {
+                g_Config.currentDirectory = GetSysDirectory(DIRECTORY_GAME);
+        }
 }
 #endif
