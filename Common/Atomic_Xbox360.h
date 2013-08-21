@@ -20,6 +20,8 @@
 
 #include "Common.h"
 #include <xtl.h>
+#include <PPCIntrinsics.h>
+
 // Atomic operations are performed in a single step by the CPU. It is
 // impossible for other threads to see the operation "half-done."
 //
@@ -62,7 +64,7 @@ inline u32 AtomicLoad(volatile u32& src) {
 }
 inline u32 AtomicLoadAcquire(volatile u32& src) {
 	u32 result = src; // 32-bit reads are always atomic.
-	__lwsync (); // Compiler instruction only. x86 loads always have acquire semantics.
+	MemoryBarrier() ; // Compiler instruction only. x86 loads always have acquire semantics.
 	return result;
 }
 
@@ -74,8 +76,9 @@ inline void AtomicStore(volatile u32& dest, u32 value) {
 	dest = value; // 32-bit writes are always atomic.
 }
 inline void AtomicStoreRelease(volatile u32& dest, u32 value) {
-	__lwsync (); // Compiler instruction only. x86 stores always have release semantics.
-	dest = value; // 32-bit writes are always atomic.
+	//__lwsync (); // Compiler instruction only. x86 stores always have release semantics.
+	//dest = value; // 32-bit writes are always atomic.
+	InterlockedExchange((volatile LONG*)&dest, value);
 }
 
 }
