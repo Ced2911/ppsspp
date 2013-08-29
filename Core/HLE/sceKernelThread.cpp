@@ -173,7 +173,7 @@ struct NativeThread
 
 	s32_le initialPriority;
 	s32_le currentPriority;
-	WaitType waitType;
+	WaitType_le waitType;
 	SceUID_le waitID;
 	s32_le wakeupCount;
 	s32_le exitStatus;
@@ -3101,7 +3101,7 @@ void __KernelCallAddress(Thread *thread, u32 entryPoint, Action *afterAction, co
 		after->chainedAction = afterAction;
 		after->threadID = thread->GetUID();
 		after->status = thread->nt.status;
-		after->waitType = thread->nt.waitType;
+		after->waitType = (WaitType)(u32)thread->nt.waitType;
 		after->waitID = thread->nt.waitID;
 		after->waitInfo = thread->waitInfo;
 		after->isProcessingCallbacks = thread->isProcessingCallbacks;
@@ -3531,7 +3531,7 @@ std::vector<DebugThreadInfo> GetThreadsInfo()
 		info.initialStack = t->nt.initialStack;
 		info.stackSize = (u32)t->nt.stackSize;
 		info.priority = t->nt.currentPriority;
-		info.waitType = t->nt.waitType;
+		info.waitType = (WaitType)(u32)t->nt.waitType;
 		if(*iter == currentThread)
 			info.curPC = currentMIPS->pc;
 		else
