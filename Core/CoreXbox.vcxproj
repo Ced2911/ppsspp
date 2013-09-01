@@ -219,7 +219,7 @@
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <PrecompiledHeaderOutputFile>$(OutDir)$(ProjectName).pch</PrecompiledHeaderOutputFile>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <PreprocessorDefinitions>_XBOX;BIG_ENDIAN;USE_DIRECTX;PPC;WIN32;NDEBUG;_XBOX;_LIB</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_XBOX;NO_UNICODE;BIG_ENDIAN;USE_DIRECTX;PPC;WIN32;NDEBUG;_XBOX;_LIB</PreprocessorDefinitions>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <AdditionalIncludeDirectories>..\ffmpeg\WindowsInclude;..\ffmpeg\Windows\x86\include;../common;..;../native;../native/ext/glew;../ext/zlib</AdditionalIncludeDirectories>
       <ForcedIncludeFiles>Core/x360_compat.h</ForcedIncludeFiles>
