@@ -54,9 +54,12 @@ void CFileSearch::FindFiles(const std::string& _searchString, const std::string&
 	BuildCompleteFilename(GCMSearchPath, _strPath, _searchString);
 #ifdef _WIN32
 	WIN32_FIND_DATA findData;
+#ifndef NO_UNICODE
 	std::wstring searchPathW = ConvertUTF8ToWString(GCMSearchPath);
 	HANDLE FindFirst = FindFirstFile(searchPathW.c_str(), &findData);
-
+#else
+	HANDLE FindFirst = FindFirstFile(GCMSearchPath.c_str(), &findData);
+#endif
 	if (FindFirst != INVALID_HANDLE_VALUE)
 	{
 		bool bkeepLooping = true;
@@ -66,7 +69,12 @@ void CFileSearch::FindFiles(const std::string& _searchString, const std::string&
 			if (findData.cFileName[0] != '.')
 			{
 				std::string strFilename;
+
+#ifndef NO_UNICODE
 				BuildCompleteFilename(strFilename, _strPath, ConvertWStringToUTF8(findData.cFileName));
+#else
+				BuildCompleteFilename(strFilename, _strPath, findData.cFileName);
+#endif
 				m_FileNames.push_back(strFilename);
 			}
 
