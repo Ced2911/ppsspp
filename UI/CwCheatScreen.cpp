@@ -34,11 +34,12 @@
 #include "UI/GameInfoCache.h"
 #include "UI/MiscScreens.h"
 #include "UI/CwCheatScreen.h"
-#include "UI/view.h"
-bool enableAll = false;
+
+static bool enableAll = false;
 static std::vector<std::string> cheatList;
 extern void DrawBackground(float alpha);
 static CWCheatEngine *cheatEngine2;
+static bool enableCheat [64];
 
 std::vector<std::string> CwCheatScreen::CreateCodeList() {
 	cheatEngine2 = new CWCheatEngine();
@@ -54,11 +55,11 @@ std::vector<std::string> CwCheatScreen::CreateCodeList() {
 			formattedList.push_back(cheatList[i].substr(4));
 			enableCheat[j++] = false;
 		}
-
 	}
 	delete cheatEngine2;
 	return formattedList;
 }
+
 void CwCheatScreen::CreateViews() {
 	using namespace UI;
 	std::vector<std::string> formattedList;
@@ -71,7 +72,7 @@ void CwCheatScreen::CreateViews() {
 	leftColumn->Add(new ItemHeader(k->T("Options")));
 	leftColumn->Add(new Choice(k->T("Back")))->OnClick.Handle<CwCheatScreen>(this, &CwCheatScreen::OnBack);
 	//leftColumn->Add(new Choice(k->T("Add Cheat")))->OnClick.Handle<CwCheatScreen>(this, &CwCheatScreen::OnAddCheat);
-	leftColumn->Add(new Choice(k->T("Import from cheat.db")))->OnClick.Handle<CwCheatScreen>(this, &CwCheatScreen::OnImportCheat);
+	leftColumn->Add(new Choice(k->T("Import Cheats")))->OnClick.Handle<CwCheatScreen>(this, &CwCheatScreen::OnImportCheat);
 	leftColumn->Add(new Choice(k->T("Enable/Disable All")))->OnClick.Handle<CwCheatScreen>(this, &CwCheatScreen::OnEnableAll);
 
 
@@ -87,43 +88,51 @@ void CwCheatScreen::CreateViews() {
 	for (size_t i = 0; i < formattedList.size(); i++) {
 		name = formattedList[i].c_str();
 		rightColumn->Add(new CheatCheckBox(&enableCheat[i], k->T(name), "" ))->OnClick.Handle(this, &CwCheatScreen::OnCheckBox);
-		}
-	
+	}
 }
+
 UI::EventReturn CwCheatScreen::OnBack(UI::EventParams &params)
 {
 	screenManager()->finishDialog(this, DR_OK);
+	os.open(activeCheatFile.c_str());
+	for (int j = 0; j < (int)cheatList.size(); j++) {
+		os << cheatList[j];
+		if (j < cheatList.size() - 1) {
+			os << "\n";
+		}
+	}
+	os.close();
 	g_Config.bReloadCheats = true;
 	return UI::EVENT_DONE;
 }
+
 UI::EventReturn CwCheatScreen::OnEnableAll(UI::EventParams &params)
 {
 	std::vector<std::string> temp = cheatList;
 	enableAll = !enableAll;
 	os.open(activeCheatFile.c_str());
-	for (int j = 0; j < temp.size(); j++) {
+	for (size_t j = 0; j < temp.size(); j++) {
 		if (enableAll == 1 && temp[j].substr(0, 3) == "_C0"){
 			temp[j].replace(0,3,"_C1");
-			for (int x = 0; x < sizeof(enableCheat); x++) {
-				enableCheat[x] = true;
-			}
 			
 		}
 		else if (enableAll == 0 && temp[j].substr(0, 3) == "_C1") {
 			temp[j].replace(0, 3, "_C0");
-			for (int x = 0; x < 64; x++) {
-				enableCheat[x] = false;
-			}
+			
 
 		}
 	}
-	for (int i = 0; i < temp.size(); i++) {
+	for (int y = 0; y < 64; y++) {
+				enableCheat[y] = enableAll;
+			}
+	for (int i = 0; i < (int)temp.size(); i++) {
 		os << temp[i];
 		if (i < temp.size() - 1) {
 			os << "\n";
 		}
 	}
 	os.close();
+	
 	return UI::EVENT_DONE;
 }
 UI::EventReturn CwCheatScreen::OnAddCheat(UI::EventParams &params)
@@ -138,7 +147,7 @@ UI::EventReturn CwCheatScreen::OnImportCheat(UI::EventParams &params)
 	bool finished = false, skip = false;
 	std::vector<std::string> newList;
 #ifdef ANDROID
-	is.open (g_Config.memCardDirectory + "PSP/Cheats/cheat.db";
+	is.open(g_Config.memCardDirectory + "PSP/Cheats/cheat.db");
 #else
 	is.open("cheats/cheat.db");
 #endif
@@ -151,8 +160,6 @@ UI::EventReturn CwCheatScreen::OnImportCheat(UI::EventParams &params)
 			getline(is, line);
 			getline(is, line);
 			
-			
-			
 			do {
 				if (finished == false){
 					getline(is, line);
@@ -160,7 +167,7 @@ UI::EventReturn CwCheatScreen::OnImportCheat(UI::EventParams &params)
 				if (line.substr(0, 3) == "_C0")
 				{
 					//Test if cheat already exists in cheatList
-					for (int j = 0; j < formattedList.size(); j++) {
+					for (size_t j = 0; j < formattedList.size(); j++) {
 						if (line.substr(4) == formattedList[j]) {
 							finished = false;
 							goto loop;
@@ -179,15 +186,15 @@ UI::EventReturn CwCheatScreen::OnImportCheat(UI::EventParams &params)
 			loop:;
 			} while (line.substr(0, 2) != "_S");
 			finished = true;
-			}
+		}
 		if (finished == true)
 			break;
-		}
+	}
 	if (newList.size() != 0)
 	{
 		os << "\n";
 	}
-	for (int i = 0; i < newList.size(); i++) {
+	for (int i = 0; i < (int)newList.size(); i++) {
 		os << newList[i];
 		if (i < newList.size() - 1) {
 			os << "\n";
@@ -200,38 +207,37 @@ UI::EventReturn CwCheatScreen::OnImportCheat(UI::EventParams &params)
 	screenManager()->finishDialog(this, DR_OK);
 	return UI::EVENT_DONE;
 }
-UI::EventReturn CwCheatScreen::OnCheckBox(UI::EventParams &params) {
 
+UI::EventReturn CwCheatScreen::OnCheckBox(UI::EventParams &params) {
 	return UI::EVENT_DONE;
 }
+
 void CwCheatScreen::processFileOn(std::string activatedCheat) {
-	
-	for (int i = 0; i < cheatList.size(); i++) {
+	for (size_t i = 0; i < cheatList.size(); i++) {
 		if (cheatList[i].substr(4) == activatedCheat) {
 			cheatList[i] = "_C1 " + activatedCheat;
 		}
 	}
 	
 	os.open(activeCheatFile.c_str());
-	for (int j = 0; j < cheatList.size(); j++) {
+	for (size_t j = 0; j < cheatList.size(); j++) {
 		os << cheatList[j];
 		if (j < cheatList.size() - 1) {
 			os << "\n";
 		}
 	}
 	os.close();
-	
 }
+
 void CwCheatScreen::processFileOff(std::string deactivatedCheat) {
-	
-	for (int i = 0; i < cheatList.size(); i++) {
+	for (size_t i = 0; i < cheatList.size(); i++) {
 		if (cheatList[i].substr(4) == deactivatedCheat) {
 			cheatList[i] = "_C0 " + deactivatedCheat;
 		}
 	}
 
 	os.open(activeCheatFile.c_str());
-	for (int j = 0; j < cheatList.size(); j++) {
+	for (size_t j = 0; j < cheatList.size(); j++) {
 		os << cheatList[j];
 		if (j < cheatList.size() - 1) {
 			os << "\n";
@@ -252,6 +258,7 @@ void CheatCheckBox::Draw(UIContext &dc) {
 	if (!IsEnabled())
 		style = dc.theme->itemDisabledStyle;
 
-	dc.Draw()->DrawText(dc.theme->uiFont, text_.c_str(), bounds_.x + paddingX, bounds_.centerY(), style.fgColor, ALIGN_VCENTER);
+	dc.SetFontStyle(dc.theme->uiFont);
+	dc.DrawText(text_.c_str(), bounds_.x + paddingX, bounds_.centerY(), style.fgColor, ALIGN_VCENTER);
 	dc.Draw()->DrawImage(image, bounds_.x2() - paddingX, bounds_.centerY(), 1.0f, style.fgColor, ALIGN_RIGHT | ALIGN_VCENTER);
 }

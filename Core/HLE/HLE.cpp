@@ -456,7 +456,7 @@ inline void updateSyscallStats(int modulenum, int funcnum, double total)
 	}
 }
 
-void CallSyscall(u32 op)
+void CallSyscall(MIPSOpcode op)
 {
 	double start = 0.0;  // need to initialize to fix the race condition where g_Config.bShowDebugStats is enabled in the middle of this func.
 	if (g_Config.bShowDebugStats)
@@ -477,10 +477,12 @@ void CallSyscall(u32 op)
 	{
 		// TODO: Move to jit/interp.
 		u32 flags = moduleDB[modulenum].funcTable[funcnum].flags;
-		if (flags & HLE_NOT_DISPATCH_SUSPENDED)
+		if (flags != 0)
 		{
-			if (!__KernelIsDispatchEnabled())
+			if ((flags & HLE_NOT_DISPATCH_SUSPENDED) && !__KernelIsDispatchEnabled())
 				RETURN(SCE_KERNEL_ERROR_CAN_NOT_WAIT);
+			else if ((flags & HLE_NOT_IN_INTERRUPT) && __IsInInterrupt())
+				RETURN(SCE_KERNEL_ERROR_ILLEGAL_CONTEXT);
 			else
 				func();
 		}

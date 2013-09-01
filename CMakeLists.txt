@@ -163,7 +163,7 @@ if(NOT MSVC)
 	endif()
 
 	if(BLACKBERRY)
-		add_definitions(-D_QNX_SOURCE=1 -D_C99=1 -O3 -mfpu=neon -mtune=cortex-a9)
+		add_definitions(-D_QNX_SOURCE -O3 -mfpu=neon -mtune=cortex-a9)
 	endif()
 
 	if(X86 AND NOT MIPS)
@@ -563,6 +563,8 @@ add_library(native STATIC
 	native/gfx/texture_gen.h
 	native/gfx_es2/draw_buffer.cpp
 	native/gfx_es2/draw_buffer.h
+	native/gfx_es2/draw_text.cpp
+	native/gfx_es2/draw_text.h
 	native/gfx_es2/fbo.cpp
 	native/gfx_es2/fbo.h
 	native/gfx_es2/gl_state.cpp
@@ -1138,6 +1140,7 @@ set(NativeAppSource
 	UI/OnScreenDisplay.cpp
 	UI/PluginScreen.cpp
 	UI/ControlMappingScreen.cpp
+	UI/CwCheatScreen.cpp
 	UI/ui_atlas.cpp)
 if(ANDROID)
 	set(NativeAppSource ${NativeAppSource} android/jni/ArmEmitterTest.cpp)

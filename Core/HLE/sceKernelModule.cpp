@@ -69,6 +69,7 @@ enum {
 static const char *lieAboutSuccessModules[] = {
 	"flash0:/kd/audiocodec.prx",
 	"flash0:/kd/libatrac3plus.prx",
+	"disc0:/PSP_GAME/SYSDIR/UPDATE/EBOOT.BIN",
 };
 
 static const char *blacklistedModules[] = {
@@ -305,7 +306,7 @@ void WriteVarSymbol(u32 exportAddress, u32 relocAddress, u8 type)
 	static std::vector<HI16RelocInfo> lastHI16Relocs;
 	static bool lastHI16Processed = true;
 
-	u32 relocData = Memory::Read_Instruction(relocAddress);
+	u32 relocData = Memory::Read_Instruction(relocAddress).encoding;
 
 	switch (type)
 	{
@@ -341,7 +342,7 @@ void WriteVarSymbol(u32 exportAddress, u32 relocAddress, u8 type)
 		// The R_MIPS_LO16 and R_MIPS_HI16 will often be *different* relocAddress values.
 		HI16RelocInfo reloc;
 		reloc.addr = relocAddress;
-		reloc.data = Memory::Read_Instruction(relocAddress);
+		reloc.data = Memory::Read_Instruction(relocAddress).encoding;
 		lastHI16Relocs.push_back(reloc);
 		lastHI16Processed = false;
 		break;
@@ -1143,7 +1144,7 @@ void sceKernelStartModule(u32 moduleId, u32 argsize, u32 argAddr, u32 returnValu
 	u32 stacksize = 0x40000; 
 	u32 attr = 0;
 	int stackPartition = 0;
-	SceKernelSMOption smoption;
+	SceKernelSMOption smoption = {0};
 	if (optionAddr) {
 		Memory::ReadStruct(optionAddr, &smoption);
 	}
@@ -1409,6 +1410,12 @@ u32 sceKernelGetModuleId()
 u32 sceKernelFindModuleByName(const char *name)
 {
 	ERROR_LOG_REPORT(HLE, "UNIMPL sceKernelFindModuleByName(%s)", name);
+	
+	int index = GetModuleIndex(name);
+
+	if (index == -1)
+		return 0;
+	
 	return 1;
 }
 
@@ -1496,13 +1503,32 @@ u32 sceKernelQueryModuleInfo(u32 uid, u32 infoAddr)
 	return 0;
 }
 
+u32 ModuleMgrForKernel_977de386(const char *name, u32 flags, u32 optionAddr)
+{
+	WARN_LOG(HLE,"Not support this patcher");
+	return sceKernelLoadModule(name, flags, optionAddr);
+}
+
+void ModuleMgrForKernel_50f0c1ec(u32 moduleId, u32 argsize, u32 argAddr, u32 returnValueAddr, u32 optionAddr)
+{
+	WARN_LOG(HLE,"Not support this patcher");
+	sceKernelStartModule(moduleId, argsize, argAddr, returnValueAddr, optionAddr);
+}
+
+//fix for tiger x dragon
+u32 ModuleMgrForKernel_a1a78c58(const char *name, u32 flags, u32 optionAddr)
+{
+	WARN_LOG(HLE,"Not support this patcher");
+	return sceKernelLoadModule(name, flags, optionAddr);
+}
+
 const HLEFunction ModuleMgrForUser[] = 
 {
 	{0x977DE386,&WrapU_CUU<sceKernelLoadModule>,"sceKernelLoadModule"},
 	{0xb7f46618,&WrapU_UUU<sceKernelLoadModuleByID>,"sceKernelLoadModuleByID"},
-	{0x50F0C1EC,&WrapV_UUUUU<sceKernelStartModule>,"sceKernelStartModule"},
+	{0x50F0C1EC,&WrapV_UUUUU<sceKernelStartModule>,"sceKernelStartModule", HLE_NOT_IN_INTERRUPT | HLE_NOT_DISPATCH_SUSPENDED},
 	{0xD675EBB8,&sceKernelExitGame,"sceKernelSelfStopUnloadModule"}, //HACK
-	{0xd1ff982a,&WrapU_UUUUU<sceKernelStopModule>,"sceKernelStopModule"},
+	{0xd1ff982a,&WrapU_UUUUU<sceKernelStopModule>,"sceKernelStopModule", HLE_NOT_IN_INTERRUPT | HLE_NOT_DISPATCH_SUSPENDED},
 	{0x2e0911aa,WrapU_U<sceKernelUnloadModule>,"sceKernelUnloadModule"},
 	{0x710F61B5,0,"sceKernelLoadModuleMs"},
 	{0xF9275D98,0,"sceKernelLoadModuleBufferUsbWlan"}, ///???
@@ -1519,7 +1545,20 @@ const HLEFunction ModuleMgrForUser[] =
 };
 
 
+const HLEFunction ModuleMgrForKernel[] =
+{
+	{0x50f0c1ec,&WrapV_UUUUU<ModuleMgrForKernel_50f0c1ec>, "ModuleMgrForKernel_50f0c1ec"},//Not sure right
+	{0x977de386, &WrapU_CUU<ModuleMgrForKernel_977de386>, "ModuleMgrForKernel_977de386"},//Not sure right
+	{0xa1a78c58, &WrapU_CUU<ModuleMgrForKernel_a1a78c58>, "ModuleMgrForKernel_a1a78c58"}, //fix for tiger x dragon
+};
+
 void Register_ModuleMgrForUser()
 {
 	RegisterModule("ModuleMgrForUser", ARRAY_SIZE(ModuleMgrForUser), ModuleMgrForUser);
 }
+
+void Register_ModuleMgrForKernel()
+{
+	RegisterModule("ModuleMgrForKernel", ARRAY_SIZE(ModuleMgrForKernel), ModuleMgrForKernel);		
+
+};
