@@ -120,7 +120,7 @@
       <PrecompiledHeaderOutputFile>$(OutDir)$(ProjectName).pch</PrecompiledHeaderOutputFile>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <AdditionalIncludeDirectories>..\ffmpeg\WindowsInclude;..\ffmpeg\Windows\x86\include;../common;..;../native;../native/ext/glew;../ext/zlib</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>USE_DIRECTX;_XBOX;PPC;BIG_ENDIAN;_DEBUG;_LIB</PreprocessorDefinitions>
+      <PreprocessorDefinitions>USE_DIRECTX;NO_UNICODE;_XBOX;PPC;BIG_ENDIAN;_DEBUG;_LIB</PreprocessorDefinitions>
       <CallAttributedProfiling>Callcap</CallAttributedProfiling>
       <ForcedIncludeFiles>Core/x360_compat.h</ForcedIncludeFiles>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -244,7 +244,7 @@
       <PrecompiledHeaderOutputFile>$(OutDir)$(ProjectName).pch</PrecompiledHeaderOutputFile>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <AdditionalIncludeDirectories>..\ffmpeg\WindowsInclude;..\ffmpeg\Windows\x86\include;../common;..;../native;../native/ext/glew;../ext/zlib</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>_XBOX;BIG_ENDIAN;USE_DIRECTX;PPC;WIN32;NDEBUG;LTCG;_LIB</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_XBOX;NO_UNICODE;BIG_ENDIAN;USE_DIRECTX;PPC;WIN32;NDEBUG;LTCG;_LIB</PreprocessorDefinitions>
       <ForcedIncludeFiles>Core/x360_compat.h</ForcedIncludeFiles>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
