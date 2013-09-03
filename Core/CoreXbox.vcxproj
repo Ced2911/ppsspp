@@ -487,6 +487,7 @@
     </ClCompile>
     <ClCompile Include="MIPS\PPC\PpcRegCache.cpp" />
     <ClCompile Include="MIPS\PPC\PpcRegCacheFPU.cpp" />
+    <ClCompile Include="MIPS\PPC\PpcRegCacheVPU.cpp" />
     <ClCompile Include="MIPS\x86\Asm.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Xbox 360'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Xbox 360'">true</ExcludedFromBuild>
@@ -733,6 +734,7 @@
     <ClInclude Include="MIPS\PPC\PpcJit.h" />
     <ClInclude Include="MIPS\PPC\PpcRegCache.h" />
     <ClInclude Include="MIPS\PPC\PpcRegCacheFPU.h" />
+    <ClInclude Include="MIPS\PPC\PpcRegCacheVPU.h" />
     <ClInclude Include="MIPS\x86\Asm.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='CodeAnalysis|Xbox 360'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Xbox 360'">true</ExcludedFromBuild>
