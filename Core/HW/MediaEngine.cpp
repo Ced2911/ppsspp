@@ -432,8 +432,8 @@ inline void writeVideoLineABGR5650(void *destp, const void *srcp, int width) {
 
 inline void writeVideoLineABGR5551(void *destp, const void *srcp, int width) {
 	// TODO: Use SSE/NEON.
-	u16 *dest = (u16 *)destp;
-	const u16 *src = (u16 *)srcp;
+	u16_le *dest = (u16_le *)destp;
+	const u16_le *src = (u16_le *)srcp;
 
 	u16 mask = 0x7FFF;
 	for (int i = 0; i < width; ++i) {
@@ -443,8 +443,8 @@ inline void writeVideoLineABGR5551(void *destp, const void *srcp, int width) {
 
 inline void writeVideoLineABGR4444(void *destp, const void *srcp, int width) {
 	// TODO: Use SSE/NEON.
-	u16 *dest = (u16 *)destp;
-	const u16 *src = (u16 *)srcp;
+	u16_le *dest = (u16_le *)destp;
+	const u16_le *src = (u16_le *)srcp;
 
 	u16 mask = 0x0FFF;
 	for (int i = 0; i < width; ++i) {
