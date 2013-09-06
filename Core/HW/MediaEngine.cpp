@@ -201,7 +201,7 @@ bool MediaEngine::openContext() {
 #ifdef USE_FFMPEG
 
 #ifdef _DEBUG
-	av_log_set_level(AV_LOG_VERBOSE);
+	av_log_set_level(AV_LOG_DEBUG);
 	av_log_set_callback(&ffmpeg_logger);
 #endif 
 	if (m_pFormatCtx || !m_pdata)
@@ -293,7 +293,7 @@ int MediaEngine::addStreamData(u8* buffer, int addSize) {
 #ifdef USE_FFMPEG
 		if (!m_pFormatCtx) {
 			m_pdata->get_front(m_mpegheader, sizeof(m_mpegheader));
-			int mpegoffset = bswap32(*(int*)(m_mpegheader + 8));
+			s32_be mpegoffset = (*(int*)(m_mpegheader + 8));
 			m_pdata->pop_front(0, mpegoffset);
 			openContext();
 		}
@@ -415,15 +415,14 @@ bool MediaEngine::stepVideo(int videoPixelMode) {
 
 // Helpers that null out alpha (which seems to be the case on the PSP.)
 // Some games depend on this, for example Sword Art Online (doesn't clear A's from buffer.)
-
 inline void writeVideoLineRGBA(void *destp, const void *srcp, int width) {
 	// TODO: Use SSE/NEON, investigate why AV_PIX_FMT_RGB0 does not work.
-	u32 *dest = (u32 *)destp;
-	const u32 *src = (u32 *)srcp;
+	u32_le *dest = (u32_le *)destp;
+	const u32_le *src = (u32_le *)srcp;
 
 	u32 mask = 0x00FFFFFF;
 	for (int i = 0; i < width; ++i) {
-		dest[i] = src[i] & mask;
+		dest[i] = (src[i]) & mask;
 	}
 }
 
