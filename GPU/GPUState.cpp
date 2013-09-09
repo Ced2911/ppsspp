@@ -15,17 +15,13 @@
 // Official git repository and contact information can be found at
 // https://github.com/hrydgard/ppsspp and http://www.ppsspp.org/.
 
-#include "GPU/ge_constants.h"
-#include "GPU/GPUState.h"
 #ifndef _XBOX
 #include "GPU/GLES/ShaderManager.h"
 #include "GPU/GLES/GLES_GPU.h"
 #endif
 #include "GPU/Null/NullGpu.h"
 #include "GPU/Software/SoftGpu.h"
-#ifdef USE_DIRECTX
 #include "Directx9/DisplayListInterpreter.h"
-#endif
 #include "Core/CoreParameter.h"
 #include "Core/System.h"
 
@@ -34,27 +30,27 @@ GPUStateCache gstate_c;
 GPUInterface *gpu;
 GPUStatistics gpuStats;
 
-void GPU_Init() {
+bool GPU_Init() {
 	switch (PSP_CoreParameter().gpuCore) {
 	case GPU_NULL:
 		gpu = new NullGPU();
 		break;
-#ifndef _XBOX		
+#ifndef _XBOX	
 	case GPU_GLES:
 		gpu = new GLES_GPU();
 		break;
-#endif
-#if !defined(__SYMBIAN32__) && !defined(_XBOX)
+#endif		
 	case GPU_SOFTWARE:
+#ifndef __SYMBIAN32__
 		gpu = new SoftGPU();
-		break;
 #endif
-#ifdef USE_DIRECTX
+		break;
 	case GPU_DIRECTX9:
 		gpu = new DIRECTX9_GPU();
 		break;
-#endif
 	}
+
+	return gpu != NULL;
 }
 
 void GPU_Shutdown() {

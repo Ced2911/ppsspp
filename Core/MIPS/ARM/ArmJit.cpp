@@ -16,18 +16,19 @@
 // https://github.com/hrydgard/ppsspp and http://www.ppsspp.org/.
 
 #include "Common/ChunkFile.h"
-#include "../../Core.h"
-#include "../../CoreTiming.h"
-#include "../MIPS.h"
-#include "../MIPSCodeUtils.h"
-#include "../MIPSInt.h"
-#include "../MIPSTables.h"
+#include "Core/Reporting.h"
+#include "Core/Core.h"
+#include "Core/CoreTiming.h"
+#include "Core/MIPS/MIPS.h"
+#include "Core/MIPS/MIPSCodeUtils.h"
+#include "Core/MIPS/MIPSInt.h"
+#include "Core/MIPS/MIPSTables.h"
 
 #include "ArmRegCache.h"
 #include "ArmJit.h"
 #include "CPUDetect.h"
 
-#include "../../../ext/disarm.h"
+#include "ext/disarm.h"
 
 void DisassembleArm(const u8 *data, int size) {
 	char temp[256];
@@ -43,13 +44,13 @@ void DisassembleArm(const u8 *data, int size) {
 			int reg1 = (next & 0x0000F000) >> 12;
 			if (reg0 == reg1) {
 				sprintf(temp, "%08x MOV32? %s, %04x%04x", (u32)inst, ArmRegName(reg0), hi, low);
-				INFO_LOG(DYNA_REC, "A:   %s", temp);
+				INFO_LOG(JIT, "A:   %s", temp);
 				i += 4;
 				continue;
 			}
 		}
 		ArmDis((u32)codePtr, inst, temp);
-		INFO_LOG(DYNA_REC, "A:   %s", temp);
+		INFO_LOG(JIT, "A:   %s", temp);
 	}
 }
 
@@ -118,10 +119,9 @@ void Jit::ClearCache()
 	GenerateFixedCode();
 }
 
-void Jit::ClearCacheAt(u32 em_address)
+void Jit::ClearCacheAt(u32 em_address, int length)
 {
-	// TODO: Properly.
-	ClearCache();
+	blocks.InvalidateICache(em_address, length);
 }
 
 void Jit::CompileAt(u32 addr)
@@ -130,11 +130,14 @@ void Jit::CompileAt(u32 addr)
 	MIPSCompileOp(op);
 }
 
-void Jit::EatInstruction(MIPSOpcode op)
-{
+void Jit::EatInstruction(MIPSOpcode op) {
 	MIPSInfo info = MIPSGetInfo(op);
-	_dbg_assert_msg_(JIT, !(info & DELAYSLOT), "Never eat a branch op.");
-	_dbg_assert_msg_(JIT, !js.inDelaySlot, "Never eat an instruction inside a delayslot.");
+	if (info & DELAYSLOT) {
+		ERROR_LOG_REPORT_ONCE(ateDelaySlot, JIT, "Ate a branch op.");
+	}
+	if (js.inDelaySlot) {
+		ERROR_LOG_REPORT_ONCE(ateInDelaySlot, JIT, "Ate an instruction inside a delay slot.")
+	}
 
 	js.compilerPC += 4;
 	js.downcountAmount += MIPSGetInstructionCycleEstimate(op);
@@ -244,14 +247,14 @@ const u8 *Jit::DoJit(u32 em_address, JitBlock *b)
 	if (logBlocks > 0 && dontLogBlocks == 0) {
 		for (u32 cpc = em_address; cpc != js.compilerPC + 4; cpc += 4) {
 			MIPSDisAsm(Memory::Read_Instruction(cpc), cpc, temp, true);
-			INFO_LOG(DYNA_REC, "M: %08x   %s", cpc, temp);
+			INFO_LOG(JIT, "M: %08x   %s", cpc, temp);
 		}
 	}
 
 	b->codeSize = GetCodePtr() - b->normalEntry;
 
 	if (logBlocks > 0 && dontLogBlocks == 0) {
-		INFO_LOG(DYNA_REC, "=============== ARM ===============");
+		INFO_LOG(JIT, "=============== ARM ===============");
 		DisassembleArm(b->normalEntry, GetCodePtr() - b->normalEntry);
 	}
 	if (logBlocks > 0) logBlocks--;
@@ -269,7 +272,7 @@ const u8 *Jit::DoJit(u32 em_address, JitBlock *b)
 void Jit::Comp_RunBlock(MIPSOpcode op)
 {
 	// This shouldn't be necessary, the dispatcher should catch us before we get here.
-	ERROR_LOG(DYNA_REC, "Comp_RunBlock should never be reached!");
+	ERROR_LOG(JIT, "Comp_RunBlock should never be reached!");
 }
 
 void Jit::Comp_Generic(MIPSOpcode op)

@@ -136,7 +136,7 @@ void CPU_Init() {
 
 	// Default memory settings
 	// Seems to be the safest place currently..
-	Memory::g_MemorySize = 0x02000000; // 32 MB of ram by default
+	Memory::g_MemorySize = Memory::RAM_NORMAL_SIZE; // 32 MB of ram by default
 	g_RemasterMode = false;
 	g_DoubleTextureCoordinates = false;
 
@@ -255,7 +255,7 @@ void Core_UpdateState(CoreState newState) {
 }
 
 bool PSP_Init(const CoreParameter &coreParam, std::string *error_string) {
-	INFO_LOG(HLE, "PPSSPP %s", PPSSPP_GIT_VERSION);
+	INFO_LOG(BOOT, "PPSSPP %s", PPSSPP_GIT_VERSION);
 
 	coreParameter = coreParam;
 	coreParameter.errorString = "";
@@ -276,7 +276,11 @@ bool PSP_Init(const CoreParameter &coreParam, std::string *error_string) {
 	bool success = coreParameter.fileToStart != "";
 	*error_string = coreParameter.errorString;
 	if (success) {
-		GPU_Init();
+		success = GPU_Init();
+		if (!success) {
+			PSP_Shutdown();
+			*error_string = "Unable to initialize rendering engine.";
+		}
 	}
 	return success;
 }

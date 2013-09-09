@@ -69,6 +69,8 @@ tests_good = [
   "cpu/fpu/fpu",
 
   "audio/atrac/ids",
+  "audio/mp3/mp3test",
+  "audio/sascore/sascore",
   "ctrl/ctrl",
   "ctrl/idle/idle",
   "ctrl/sampling/sampling",
@@ -76,6 +78,7 @@ tests_good = [
   "display/display",
   "display/vblankmulti",
   "dmac/dmactest",
+  "hash/hash",
   "hle/check_not_used_uids",
   "intr/intr",
   "intr/vblank/vblank",
@@ -185,11 +188,10 @@ tests_good = [
 tests_next = [
 # These are the next tests up for fixing. These run by default.
   "audio/atrac/atractest",
-  "audio/mp3/mp3test",
-  "audio/sascore/sascore",
   "audio/sceaudio/datalen",
   "audio/sceaudio/output",
   "audio/sceaudio/reserve",
+  "display/hcount",
   "threads/scheduling/dispatch",
   "threads/scheduling/scheduling",
   "threads/threads/change",

@@ -156,7 +156,7 @@ void Jit::BranchRSRTComp(MIPSOpcode op, Gen::CCFlags cc, bool likely)
 		{
 		case CC_E: skipBranch = rsImm == rtImm; break;
 		case CC_NE: skipBranch = rsImm != rtImm; break;
-		default: _dbg_assert_msg_(JIT, false, "Bad cc flag in BranchRSRTComp().");
+		default: skipBranch = false; _dbg_assert_msg_(JIT, false, "Bad cc flag in BranchRSRTComp().");
 		}
 
 		if (skipBranch)
@@ -256,7 +256,7 @@ void Jit::BranchRSZeroComp(MIPSOpcode op, Gen::CCFlags cc, bool andLink, bool li
 		case CC_GE: skipBranch = imm >= 0; break;
 		case CC_L: skipBranch = imm < 0; break;
 		case CC_LE: skipBranch = imm <= 0; break;
-		default: _dbg_assert_msg_(JIT, false, "Bad cc flag in BranchRSZeroComp().");
+		default: skipBranch = false; _dbg_assert_msg_(JIT, false, "Bad cc flag in BranchRSZeroComp().");
 		}
 
 		if (skipBranch)
@@ -466,7 +466,7 @@ void Jit::BranchVFPUFlag(MIPSOpcode op, Gen::CCFlags cc, bool likely)
 	if (!likely && delaySlotIsNice)
 		CompileDelaySlot(DELAYSLOT_NICE);
 	if (delaySlotIsBranch && (signed short)(delaySlotOp & 0xFFFF) != (signed short)(op & 0xFFFF) - 1)
-		ERROR_LOG(JIT, "VFPU branch in VFPU delay slot at %08x with different target %d / %d", js.compilerPC, (signed short)(delaySlotOp & 0xFFFF), (signed short)(op & 0xFFFF) - 1);
+		ERROR_LOG_REPORT(JIT, "VFPU branch in VFPU delay slot at %08x with different target %d / %d", js.compilerPC, (signed short)(delaySlotOp & 0xFFFF), (signed short)(op & 0xFFFF) - 1);
 
 	// THE CONDITION
 	int imm3 = (op >> 18) & 7;

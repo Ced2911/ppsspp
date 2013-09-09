@@ -230,8 +230,8 @@ void UpdateConfirmCancelKeys() {
 	};
 
 	// If they're not already bound, add them in.
-	for(int i = 0; i < ARRAY_SIZE(hardcodedConfirmKeys); i++) {
-		if(std::find(confirmKeys.begin(), confirmKeys.end(), hardcodedConfirmKeys[i]) == confirmKeys.end())
+	for (size_t i = 0; i < ARRAY_SIZE(hardcodedConfirmKeys); i++) {
+		if (std::find(confirmKeys.begin(), confirmKeys.end(), hardcodedConfirmKeys[i]) == confirmKeys.end())
 			confirmKeys.push_back(hardcodedConfirmKeys[i]);
 	}
 
@@ -240,8 +240,8 @@ void UpdateConfirmCancelKeys() {
 		NKCODE_BACK, 
 	};
 
-	for(int i = 0; i < ARRAY_SIZE(hardcodedCancelKeys); i++) {
-		if(std::find(cancelKeys.begin(), cancelKeys.end(), hardcodedCancelKeys[i]) == cancelKeys.end())
+	for (size_t i = 0; i < ARRAY_SIZE(hardcodedCancelKeys); i++) {
+		if (std::find(cancelKeys.begin(), cancelKeys.end(), hardcodedCancelKeys[i]) == cancelKeys.end())
 			cancelKeys.push_back(hardcodedCancelKeys[i]);
 	}
 
@@ -676,12 +676,12 @@ void RestoreDefault() {
 	SetDefaultKeyMap(DEFAULT_MAPPING_PAD, false);
 #elif defined(ANDROID)
 	// Autodetect a few common devices
-	std::string name = System_GetName();
-	if (name == "NVIDIA:SHIELD") {
+	std::string name = System_GetProperty(SYSPROP_NAME);
+	if (IsNvidiaShield(name)) {
 		SetDefaultKeyMap(DEFAULT_MAPPING_SHIELD, true);
-	} else if (name == "OUYA:OUYA Console") {  // TODO: check!
+	} else if (IsOuya(name)) {  // TODO: check!
 		SetDefaultKeyMap(DEFAULT_MAPPING_OUYA, true);
-	} else if (name == "Sony Ericsson:R800i" || name == "Sony Ericsson:zeus") {
+	} else if (IsXperiaPlay(name)) {
 		SetDefaultKeyMap(DEFAULT_MAPPING_XPERIA_PLAY, true);
 	} else {
 		SetDefaultKeyMap(DEFAULT_MAPPING_PAD, true);
@@ -700,7 +700,7 @@ void LoadFromIni(IniFile &file) {
 	}
 
 	IniFile::Section *controls = file.GetOrCreateSection("ControlMapping");
-	for (int i = 0; i < ARRAY_SIZE(psp_button_names); i++) {
+	for (size_t i = 0; i < ARRAY_SIZE(psp_button_names); i++) {
 		std::string value;
 		controls->Get(psp_button_names[i].name.c_str(), &value, "");
 
@@ -728,7 +728,7 @@ void LoadFromIni(IniFile &file) {
 void SaveToIni(IniFile &file) {
 	IniFile::Section *controls = file.GetOrCreateSection("ControlMapping");
 
-	for (int i = 0; i < ARRAY_SIZE(psp_button_names); i++) {
+	for (size_t i = 0; i < ARRAY_SIZE(psp_button_names); i++) {
 		std::vector<KeyDef> keys;
 		KeyFromPspButton(psp_button_names[i].key, &keys);
 
@@ -743,6 +743,22 @@ void SaveToIni(IniFile &file) {
 
 		controls->Set(psp_button_names[i].name.c_str(), value, "");
 	}
+}
+
+bool IsOuya(const std::string &name) {
+	return name == "OUYA:OUYA Console";
+}
+
+bool IsNvidiaShield(const std::string &name) {
+	return name == "NVIDIA:SHIELD";
+}
+
+bool IsXperiaPlay(const std::string &name) {
+	 return name == "Sony Ericsson:R800a" || name == "Sony Ericsson:R800i" || name == "Sony Ericsson:R800x" || name == "Sony Ericsson:R800at" || name == "Sony Ericsson:SO-01D" || name == "Sony Ericsson:zeus";
+}
+
+bool HasBuiltinController(const std::string &name) {
+	return IsOuya(name) || IsXperiaPlay(name) || IsNvidiaShield(name);
 }
 
 }  // KeyMap

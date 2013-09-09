@@ -25,6 +25,7 @@
 #include "ui/viewgroup.h"
 
 #include "Core/HLE/sceCtrl.h"
+#include "Core/System.h"
 #include "Common/KeyMap.h"
 #include "Core/Config.h"
 #include "UI/ui_atlas.h"
@@ -183,7 +184,7 @@ void ControlMappingScreen::CreateViews() {
 	using namespace UI;
 
 	I18NCategory *k = GetI18NCategory("KeyMapping");
-	I18NCategory *g = GetI18NCategory("General");
+	I18NCategory *d = GetI18NCategory("Dialog");
 
 	root_ = new LinearLayout(ORIENT_HORIZONTAL);
 
@@ -191,8 +192,7 @@ void ControlMappingScreen::CreateViews() {
 	leftColumn->Add(new Choice(k->T("Clear All")))->OnClick.Handle(this, &ControlMappingScreen::OnClearMapping);
 	leftColumn->Add(new Choice(k->T("Default All")))->OnClick.Handle(this, &ControlMappingScreen::OnDefaultMapping);
 	leftColumn->Add(new Spacer(new LinearLayoutParams(1.0f)));
-	leftColumn->Add(new Choice(g->T("Back")))->OnClick.Handle<UIScreen>(this, &UIScreen::OnBack);
-
+	leftColumn->Add(new Choice(d->T("Back")))->OnClick.Handle(this, &ControlMappingScreen::OnBack);
 	/*
 	ChoiceStrip *mode = leftColumn->Add(new ChoiceStrip(ORIENT_VERTICAL));
 	mode->AddChoice("Replace");
@@ -210,6 +210,17 @@ void ControlMappingScreen::CreateViews() {
 	for (size_t i = 0; i < mappableKeys.size(); i++) {
 		rightColumn->Add(new ControlMapper(mappableKeys[i].key, mappableKeys[i].name, screenManager(), new LinearLayoutParams(FILL_PARENT, WRAP_CONTENT)));
 	}
+}
+
+UI::EventReturn ControlMappingScreen::OnBack(UI::EventParams &e) {
+	// If we're in-game, return to the game via DR_CANCEL.
+	if(PSP_IsInited()) {
+		screenManager()->finishDialog(this, DR_CANCEL);
+	} else {
+		screenManager()->finishDialog(this, DR_OK);
+	}
+
+	return UI::EVENT_DONE;
 }
 
 UI::EventReturn ControlMappingScreen::OnClearMapping(UI::EventParams &params) {

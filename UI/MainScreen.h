@@ -30,6 +30,8 @@ class MainScreen : public UIScreenWithBackground {
 public:
 	MainScreen() {}
 
+	virtual bool isTopLevel() const { return true; }
+
 protected:
 	virtual void CreateViews();
 	virtual void update(InputState &input);
@@ -41,6 +43,8 @@ private:
 	// Event handlers
 	UI::EventReturn OnLoadFile(UI::EventParams &e);
 	UI::EventReturn OnGameSettings(UI::EventParams &e);
+	UI::EventReturn OnLanguageChange(UI::EventParams &e);
+	UI::EventReturn OnRecentChange(UI::EventParams &e);
 	UI::EventReturn OnCredits(UI::EventParams &e);
 	UI::EventReturn OnSupport(UI::EventParams &e);
 	UI::EventReturn OnPPSSPPOrg(UI::EventParams &e);
@@ -58,6 +62,7 @@ protected:
 	virtual void DrawBackground(UIContext &dc);
 	virtual void CreateViews();
 	virtual void update(InputState &input);
+	virtual void sendMessage(const char *message, const char *value);
 
 private:
 	UI::EventReturn OnMainSettings(UI::EventParams &e);

@@ -25,6 +25,7 @@
 
 #include "Common/FileUtil.h"
 #include "Core/System.h"
+#include "Core/Host.h"
 #include "Core/SaveState.h"
 
 #include "UI/EmuScreen.h"
@@ -34,6 +35,8 @@
 #include "UI/GameSettingsScreen.h"
 #include "UI/CwCheatScreen.h"
 #include "UI/MiscScreens.h"
+#include "UI/ControlMappingScreen.h"
+#include "UI/PluginScreen.h"
 #include "UI/ui_atlas.h"
 #include "Core/Config.h"
 #include "GPU/GPUInterface.h"
@@ -328,7 +331,7 @@ private:
 };
 
 GameBrowser::GameBrowser(std::string path, bool allowBrowsing, bool *gridStyle, std::string lastText, std::string lastLink, UI::LayoutParams *layoutParams) 
-	: LinearLayout(UI::ORIENT_VERTICAL, layoutParams), path_(path), allowBrowsing_(allowBrowsing), gridStyle_(gridStyle), gameList_(0), lastText_(lastText), lastLink_(lastLink) {
+	: LinearLayout(UI::ORIENT_VERTICAL, layoutParams), path_(path), gameList_(0), allowBrowsing_(allowBrowsing), gridStyle_(gridStyle), lastText_(lastText), lastLink_(lastLink) {
 	using namespace UI;
 	Refresh();
 }
@@ -550,6 +553,15 @@ void MainScreen::sendMessage(const char *message, const char *value) {
 	if (!strcmp(message, "boot")) {
 		screenManager()->switchScreen(new EmuScreen(value));
 	}
+	if (!strcmp(message, "language")) {
+		RecreateViews();
+	}
+	if (!strcmp(message, "control mapping")) {
+		screenManager()->push(new ControlMappingScreen());
+	}
+	if (!strcmp(message, "settings")) {
+		screenManager()->push(new GameSettingsScreen(""));
+	}
 }
 
 void MainScreen::update(InputState &input) {
@@ -585,7 +597,26 @@ UI::EventReturn MainScreen::OnGameSelectedInstant(UI::EventParams &e) {
 
 UI::EventReturn MainScreen::OnGameSettings(UI::EventParams &e) {
 	// screenManager()->push(new SettingsScreen());
-	screenManager()->push(new GameSettingsScreen("",""));
+	auto gameSettings = new GameSettingsScreen("", "");
+	gameSettings->OnLanguageChanged.Handle(this, &MainScreen::OnLanguageChange);
+	gameSettings->OnRecentChanged.Handle(this, &MainScreen::OnRecentChange);
+	screenManager()->push(gameSettings);
+	return UI::EVENT_DONE;
+}
+
+UI::EventReturn MainScreen::OnLanguageChange(UI::EventParams &e) {
+	RecreateViews();
+	if (host) {
+		host->UpdateUI();
+	}
+	return UI::EVENT_DONE;
+}
+
+UI::EventReturn MainScreen::OnRecentChange(UI::EventParams &e) {
+	RecreateViews();
+	if (host) {
+		host->UpdateUI();
+	}
 	return UI::EVENT_DONE;
 }
 
@@ -667,10 +698,11 @@ void GamePauseScreen::CreateViews() {
 	leftColumn->Add(leftColumnItems);
 
 	saveSlots_ = leftColumnItems->Add(new ChoiceStrip(ORIENT_HORIZONTAL, new LinearLayoutParams(300, WRAP_CONTENT)));
-	saveSlots_->AddChoice("  1  ");
-	saveSlots_->AddChoice("  2  ");
-	saveSlots_->AddChoice("  3  ");
-	saveSlots_->AddChoice("  4  ");
+	saveSlots_->AddChoice(" 1 ");
+	saveSlots_->AddChoice(" 2 ");
+	saveSlots_->AddChoice(" 3 ");
+	saveSlots_->AddChoice(" 4 ");
+	saveSlots_->AddChoice(" 5 ");
 	saveSlots_->SetSelection(g_Config.iCurrentStateSlot);
 	saveSlots_->OnChoice.Handle(this, &GamePauseScreen::OnStateSelected);
 	
@@ -699,7 +731,7 @@ void GamePauseScreen::CreateViews() {
 }
 
 UI::EventReturn GamePauseScreen::OnGameSettings(UI::EventParams &e) {
-	screenManager()->push(new GameSettingsScreen(gamePath_));
+	screenManager()->push(new GameSettingsScreen(gamePath_));	
 	return UI::EVENT_DONE;
 }
 
@@ -736,4 +768,10 @@ UI::EventReturn GamePauseScreen::OnSaveState(UI::EventParams &e) {
 UI::EventReturn GamePauseScreen::OnCwCheat(UI::EventParams &e) {
 	screenManager()->push(new CwCheatScreen());
 	return UI::EVENT_DONE;
+}
+
+void GamePauseScreen::sendMessage(const char *message, const char *value) {
+	if (!strcmp(message, "language")) {
+		RecreateViews();
+	}
 }

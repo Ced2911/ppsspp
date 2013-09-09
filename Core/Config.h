@@ -92,6 +92,8 @@ public:
 	int iCurrentStateSlot;
 	bool bEnableCheats;
 	bool bReloadCheats;
+	bool bDisableStencilTest;
+	bool bAlwaysDepthWrite;
 
 	// Sound
 	bool bEnableSound;
@@ -157,6 +159,7 @@ public:
 	int iFontWidth;
 	int iFontHeight;
 	bool bDisplayStatusBar;
+	bool bShowDeveloperMenu;
 
 	std::string currentDirectory;
 	std::string externalDirectory; 

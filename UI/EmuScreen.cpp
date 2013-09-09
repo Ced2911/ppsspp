@@ -49,8 +49,11 @@
 
 #include "UI/MainScreen.h"
 #include "UI/EmuScreen.h"
+#include "UI/DevScreens.h"
 #include "UI/GameInfoCache.h"
 #include "UI/MiscScreens.h"
+#include "UI/ControlMappingScreen.h"
+#include "UI/GameSettingsScreen.h"
 
 
 EmuScreen::EmuScreen(const std::string &filename)
@@ -159,6 +162,12 @@ void EmuScreen::sendMessage(const char *message, const char *value) {
 	else if (!strcmp(message, "boot")) {
 		PSP_Shutdown();
 		bootGame(value);
+	}
+	else if (!strcmp(message, "control mapping")) {
+		screenManager()->push(new ControlMappingScreen());
+	}
+	else if (!strcmp(message, "settings")) {
+		screenManager()->push(new GameSettingsScreen(gamePath_));
 	}
 }
 
@@ -384,6 +393,14 @@ static const struct { int from, to; } legacy_touch_mapping[12] = {
 
 void EmuScreen::CreateViews() {
 	root_ = CreatePadLayout(&pauseTrigger_);
+	if (g_Config.bShowDeveloperMenu) {
+		root_->Add(new UI::Button("DevMenu"))->OnClick.Handle(this, &EmuScreen::OnDevTools);
+	}
+}
+
+UI::EventReturn EmuScreen::OnDevTools(UI::EventParams &params) {
+	screenManager()->push(new DevMenu());
+	return UI::EVENT_DONE;
 }
 
 void EmuScreen::update(InputState &input) {
@@ -496,8 +513,9 @@ void EmuScreen::render() {
 	if (g_Config.bShowDebugStats) {
 		char statbuf[4096] = {0};
 		__DisplayGetDebugStats(statbuf);
-		if (statbuf[4095])
-			ERROR_LOG(HLE, "Statbuf too big");
+		if (statbuf[4095]) {
+			ELOG("Statbuf too small! :(");
+		}
 		ui_draw2d.SetFontScale(.7f, .7f);
 		ui_draw2d.DrawText(UBUNTU24, statbuf, 11, 11, 0xc0000000, FLAG_DYNAMIC_ASCII);
 		ui_draw2d.DrawText(UBUNTU24, statbuf, 10, 10, 0xFFFFFFFF, FLAG_DYNAMIC_ASCII);

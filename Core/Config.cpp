@@ -21,6 +21,7 @@
 #include "Common/FileUtil.h"
 #include "Config.h"
 #include "file/ini_file.h"
+#include "i18n/i18n.h"
 #include "HLE/sceUtility.h"
 #include "Common/CPUDetect.h"
 
@@ -55,7 +56,16 @@ void Config::Load(const char *iniFileName, const char *controllerIniFilename)
 	general->Get("IgnoreBadMemAccess", &bIgnoreBadMemAccess, true);
 	general->Get("CurrentDirectory", &currentDirectory, "");
 	general->Get("ShowDebuggerOnLoad", &bShowDebuggerOnLoad, false);
-	general->Get("Language", &languageIni, "en_US");
+
+	std::string defaultLangRegion = "en_US";
+	if (bFirstRun) {
+		std::string langRegion = System_GetProperty(SYSPROP_LANGREGION);
+		if (i18nrepo.IniExists(langRegion))
+			defaultLangRegion = langRegion;
+		// TODO: Be smart about same language, different country
+	}
+
+	general->Get("Language", &languageIni, defaultLangRegion.c_str());
 	general->Get("NumWorkerThreads", &iNumWorkerThreads, cpu_info.num_cores);
 	general->Get("EnableCheats", &bEnableCheats, false);
 	general->Get("ScreenshotsAsPNG", &bScreenshotsAsPNG, false);
@@ -89,8 +99,12 @@ void Config::Load(const char *iniFileName, const char *controllerIniFilename)
 		std::string fileName;
 
 		sprintf(keyName,"FileName%d",i);
-		if (!recent->Get(keyName,&fileName,"") || fileName.length() == 0) break;
-		recentIsos.push_back(fileName);
+		if (!recent->Get(keyName,&fileName,"") || fileName.length() == 0) {
+			// just skip it to get the next key
+		}
+		else {
+			recentIsos.push_back(fileName);
+		}
 	}
 
 	IniFile::Section *cpu = iniFile.GetOrCreateSection("CPU");
@@ -153,6 +167,8 @@ void Config::Load(const char *iniFileName, const char *controllerIniFilename)
 	graphics->Get("TexScalingType", &iTexScalingType, 0);
 	graphics->Get("TexDeposterize", &bTexDeposterize, false);
 	graphics->Get("VSyncInterval", &bVSync, false);
+	graphics->Get("DisableStencilTest", &bDisableStencilTest, false);
+	graphics->Get("AlwaysDepthWrite", &bAlwaysDepthWrite, false);
 
 	IniFile::Section *sound = iniFile.GetOrCreateSection("Sound");
 	sound->Get("Enable", &bEnableSound, true);
@@ -166,8 +182,8 @@ void Config::Load(const char *iniFileName, const char *controllerIniFilename)
 #ifdef BLACKBERRY
 	control->Get("ShowTouchControls", &bShowTouchControls, pixel_xres != pixel_yres);
 #elif defined(USING_GLES2)
-	std::string name = System_GetName();
-	if (name == "NVIDIA:SHIELD" || name == "Sony Ericsson:R800i" || name == "Sony Ericsson:zeus") {
+	std::string name = System_GetProperty(SYSPROP_NAME);
+	if (KeyMap::HasBuiltinController(name)) {
 		control->Get("ShowTouchControls", &bShowTouchControls, false);
 	} else {
 		control->Get("ShowTouchControls", &bShowTouchControls, true);
@@ -206,6 +222,7 @@ void Config::Load(const char *iniFileName, const char *controllerIniFilename)
 	debugConfig->Get("FontWidth", &iFontWidth, 8);
 	debugConfig->Get("FontHeight", &iFontHeight, 12);
 	debugConfig->Get("DisplayStatusBar", &bDisplayStatusBar, true);
+	debugConfig->Get("ShowDeveloperMenu", &bShowDeveloperMenu, false);
 
 	IniFile::Section *gleshacks = iniFile.GetOrCreateSection("GLESHacks");
 	gleshacks->Get("PrescaleUV", &bPrescaleUV, false);
@@ -263,12 +280,14 @@ void Config::Save() {
 		IniFile::Section *recent = iniFile.GetOrCreateSection("Recent");
 		recent->Set("MaxRecent", iMaxRecent);
 	
-		for (int i = 0; i < recentIsos.size(); i++)
-		{
+		for (int i = 0; i < iMaxRecent; i++) {
 			char keyName[64];
-			
 			sprintf(keyName,"FileName%d",i);
-			recent->Set(keyName,recentIsos[i]);
+			if (i < (int)recentIsos.size()) {
+				recent->Set(keyName, recentIsos[i]);
+			} else {
+				recent->Delete(keyName); // delete the nonexisting FileName
+			} 
 		}
 
 		IniFile::Section *cpu = iniFile.GetOrCreateSection("CPU");
@@ -305,6 +324,8 @@ void Config::Save() {
 		graphics->Set("TexScalingType", iTexScalingType);
 		graphics->Set("TexDeposterize", bTexDeposterize);
 		graphics->Set("VSyncInterval", bVSync);
+		graphics->Set("DisableStencilTest", bDisableStencilTest);
+		graphics->Set("AlwaysDepthWrite", bAlwaysDepthWrite);
 
 		IniFile::Section *sound = iniFile.GetOrCreateSection("Sound");
 		sound->Set("Enable", bEnableSound);
@@ -347,6 +368,8 @@ void Config::Save() {
 		debugConfig->Set("FontWidth", iFontWidth);
 		debugConfig->Set("FontHeight", iFontHeight);
 		debugConfig->Set("DisplayStatusBar", bDisplayStatusBar);
+		debugConfig->Set("ShowDeveloperMenu", bShowDeveloperMenu);
+
 		if (!iniFile.Save(iniFilename_.c_str())) {
 			ERROR_LOG(LOADER, "Error saving config - can't write ini %s", iniFilename_.c_str());
 			return;
@@ -388,8 +411,19 @@ void Config::AddRecent(const std::string &file) {
 void Config::CleanRecent() {
 	std::vector<std::string> cleanedRecent;
 	for (size_t i = 0; i < recentIsos.size(); i++) {
-		if (File::Exists(recentIsos[i]))
-			cleanedRecent.push_back(recentIsos[i]);
+		if (File::Exists(recentIsos[i])){
+			// clean the redundant recent games' list.
+			if (cleanedRecent.size()==0){ // add first one
+					cleanedRecent.push_back(recentIsos[i]);
+			}
+			for (size_t j=0; j<cleanedRecent.size();j++){
+				if (cleanedRecent[j]==recentIsos[i])
+					break; // skip if found redundant
+				if (j==cleanedRecent.size()-1){ // add if no redundant found
+					cleanedRecent.push_back(recentIsos[i]);
+				}
+			}
+		}
 	}
 	recentIsos = cleanedRecent;
 }

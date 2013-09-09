@@ -148,8 +148,6 @@ if(NOT MSVC)
 	add_definitions(-fno-strict-aliasing)
 	if (CMAKE_C_COMPILER_ID STREQUAL "Intel")
 		set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -parallel -fopenmp")
-	else()
-		add_definitions(-ffast-math)
 	endif()
 	if(NOT APPLE)
 		if (NOT CMAKE_C_COMPILER_ID STREQUAL "Intel")
@@ -803,6 +801,7 @@ add_library(${CoreLibName} ${CoreLinkType}
 	Core/HLE/HLE.h
 	Core/HLE/HLETables.cpp
 	Core/HLE/HLETables.h
+	Core/HLE/KernelWaitHelpers.h
 	Core/HLE/__sceAudio.cpp
 	Core/HLE/__sceAudio.h
 	Core/HLE/sceAtrac.cpp
@@ -829,6 +828,8 @@ add_library(${CoreLibName} ${CoreLinkType}
 	Core/HLE/sceGe.h
 	Core/HLE/sceFont.cpp
 	Core/HLE/sceFont.h
+	Core/HLE/sceHeap.cpp
+	Core/HLE/sceHeap.h
 	Core/HLE/sceHprm.cpp
 	Core/HLE/sceHprm.h
 	Core/HLE/sceHttp.cpp
@@ -869,6 +870,8 @@ add_library(${CoreLibName} ${CoreLinkType}
 	Core/HLE/sceMpeg.h
 	Core/HLE/sceNet.cpp
 	Core/HLE/sceNet.h
+	Core/HLE/sceNetAdhoc.cpp
+	Core/HLE/sceNetAdhoc.h
 	Core/HLE/sceOpenPSID.cpp
 	Core/HLE/sceOpenPSID.h
 	Core/HLE/sceP3da.cpp
@@ -1128,6 +1131,7 @@ endif()
 
 set(NativeAppSource
 	UI/NativeApp.cpp
+	UI/DevScreens.cpp
 	UI/EmuScreen.cpp
 	android/jni/TestRunner.cpp
 	UI/GameInfoCache.cpp

@@ -297,7 +297,7 @@ bool SavedataParam::Save(SceUtilitySavedataParam* param, const std::string &save
 		}
 		else
 		{
-			ERROR_LOG(HLE,"Save encryption failed. This save won't work on real PSP");
+			ERROR_LOG(SCEUTILITY,"Save encryption failed. This save won't work on real PSP");
 			delete[] cryptedData;
 			cryptedData = 0;
 		}
@@ -401,14 +401,14 @@ bool SavedataParam::Save(SceUtilitySavedataParam* param, const std::string &save
 			saveSize = cryptedSize;
 		}
 
-		INFO_LOG(HLE,"Saving file with size %u in %s",saveSize,filePath.c_str());
+		INFO_LOG(SCEUTILITY,"Saving file with size %u in %s",saveSize,filePath.c_str());
 
 		// copy back save name in request
 		strncpy(param->saveName, saveDirName.c_str(), 20);
 
 		if (!WritePSPFile(filePath, data_, saveSize))
 		{
-			ERROR_LOG(HLE,"Error writing file %s",filePath.c_str());
+			ERROR_LOG(SCEUTILITY,"Error writing file %s",filePath.c_str());
 			if(cryptedData != 0)
 			{
 				delete[] cryptedData;
@@ -467,12 +467,12 @@ bool SavedataParam::Load(SceUtilitySavedataParam *param, const std::string &save
 
 	std::string filePath = dirPath+"/"+GetFileName(param);
 	s64 readSize;
-	INFO_LOG(HLE,"Loading file with size %u in %s",param->dataBufSize,filePath.c_str());
+	INFO_LOG(SCEUTILITY,"Loading file with size %u in %s",param->dataBufSize,filePath.c_str());
 	u8* saveData = 0;
 	int saveSize = -1;
 	if (!ReadPSPFile(filePath, &saveData, saveSize, &readSize))
 	{
-		ERROR_LOG(HLE,"Error reading file %s",filePath.c_str());
+		ERROR_LOG(SCEUTILITY,"Error reading file %s",filePath.c_str());
 		return false;
 	}
 	saveSize = (int)readSize;
@@ -526,7 +526,8 @@ bool SavedataParam::Load(SceUtilitySavedataParam *param, const std::string &save
 
 		if(DecryptSave(decryptMode, data_base, &saveSize, &align_len, ((param->key[0] != 0)?cryptKey:0)) == 0)
 		{
-			memcpy(data_, data_base, saveSize);
+			if (param->dataBuf.IsValid())
+				memcpy(data_, data_base, saveSize);			
 			saveDone = true;
 		}
 		delete[] data_base;
@@ -857,29 +858,29 @@ int SavedataParam::GetFilesList(SceUtilitySavedataParam *param)
 	}
 
 	if (!param->fileList.IsValid()) {
-		ERROR_LOG_REPORT(HLE, "SavedataParam::GetFilesList(): bad fileList address %08x", param->fileList.ptr);
+		ERROR_LOG_REPORT(SCEUTILITY, "SavedataParam::GetFilesList(): bad fileList address %08x", param->fileList.ptr);
 		// Should crash.
 		return -1;
 	}
 
 	auto &fileList = param->fileList;
 	if (fileList->secureEntries.IsValid() && fileList->maxSecureEntries > 99) {
-		ERROR_LOG_REPORT(HLE, "SavedataParam::GetFilesList(): too many secure entries, %d", fileList->maxSecureEntries);
+		ERROR_LOG_REPORT(SCEUTILITY, "SavedataParam::GetFilesList(): too many secure entries, %d", fileList->maxSecureEntries);
 		return SCE_UTILITY_SAVEDATA_ERROR_RW_BAD_PARAMS;
 	}
 	if (fileList->normalEntries.IsValid() && fileList->maxNormalEntries > 8192) {
-		ERROR_LOG_REPORT(HLE, "SavedataParam::GetFilesList(): too many normal entries, %d", fileList->maxNormalEntries);
+		ERROR_LOG_REPORT(SCEUTILITY, "SavedataParam::GetFilesList(): too many normal entries, %d", fileList->maxNormalEntries);
 		return SCE_UTILITY_SAVEDATA_ERROR_RW_BAD_PARAMS;
 	}
 	// TODO: This may depend on sdk version or something?  Not returned by default.
 	if (false && fileList->systemEntries.IsValid() && fileList->maxSystemEntries > 5) {
-		ERROR_LOG_REPORT(HLE, "SavedataParam::GetFilesList(): too many system entries, %d", fileList->maxSystemEntries);
+		ERROR_LOG_REPORT(SCEUTILITY, "SavedataParam::GetFilesList(): too many system entries, %d", fileList->maxSystemEntries);
 		return SCE_UTILITY_SAVEDATA_ERROR_RW_BAD_PARAMS;
 	}
 
 	std::string dirPath = savePath + GetGameName(param) + GetSaveName(param);
 	if (!pspFileSystem.GetFileInfo(dirPath).exists) {
-		DEBUG_LOG(HLE, "SavedataParam::GetFilesList(): directory %s does not exist", dirPath.c_str());
+		DEBUG_LOG(SCEUTILITY, "SavedataParam::GetFilesList(): directory %s does not exist", dirPath.c_str());
 		return SCE_UTILITY_SAVEDATA_ERROR_RW_NO_DATA;
 	}
 
@@ -929,7 +930,7 @@ int SavedataParam::GetFilesList(SceUtilitySavedataParam *param)
 		}
 		// TODO: What are the exact rules?  It definitely skips lowercase, and allows FILE or FILE.EXT.
 		if (file->name.find_first_of("abcdefghijklmnopqrstuvwxyz") != file->name.npos) {
-			DEBUG_LOG(HLE, "SavedataParam::GetFilesList(): skipping file %s with lowercase", file->name.c_str());
+			DEBUG_LOG(SCEUTILITY, "SavedataParam::GetFilesList(): skipping file %s with lowercase", file->name.c_str());
 			continue;
 		}
 
@@ -1080,7 +1081,7 @@ int SavedataParam::SetPspParam(SceUtilitySavedataParam *param)
 				if (strcmp(saveNameListData[i], "<>") == 0)
 					continue;
 
-				DEBUG_LOG(HLE,"Name : %s",saveNameListData[i]);
+				DEBUG_LOG(SCEUTILITY,"Name : %s",saveNameListData[i]);
 
 				std::string fileDataPath = savePath+GetGameName(param) + saveNameListData[i] + "/" + param->fileName;
 				PSPFileInfo info = pspFileSystem.GetFileInfo(fileDataPath);
@@ -1088,7 +1089,7 @@ int SavedataParam::SetPspParam(SceUtilitySavedataParam *param)
 				{
 					SetFileInfo(realCount, info, saveNameListData[i]);
 
-					DEBUG_LOG(HLE,"%s Exist",fileDataPath.c_str());
+					DEBUG_LOG(SCEUTILITY,"%s Exist",fileDataPath.c_str());
 					realCount++;
 				}
 				else
@@ -1096,7 +1097,7 @@ int SavedataParam::SetPspParam(SceUtilitySavedataParam *param)
 					if (listEmptyFile)
 					{
 						ClearFileInfo(saveDataList[realCount], saveNameListData[i]);
-						DEBUG_LOG(HLE,"Don't Exist");
+						DEBUG_LOG(SCEUTILITY,"Don't Exist");
 						realCount++;
 					}
 				}
@@ -1113,7 +1114,7 @@ int SavedataParam::SetPspParam(SceUtilitySavedataParam *param)
 		saveDataListCount = 1;
 
 		// get and stock file info for each file
-		DEBUG_LOG(HLE,"Name : %s",GetSaveName(param).c_str());
+		DEBUG_LOG(SCEUTILITY,"Name : %s",GetSaveName(param).c_str());
 
 		std::string fileDataPath = savePath + GetGameName(param) + GetSaveName(param) + "/" + param->fileName;
 		PSPFileInfo info = pspFileSystem.GetFileInfo(fileDataPath);
@@ -1121,7 +1122,7 @@ int SavedataParam::SetPspParam(SceUtilitySavedataParam *param)
 		{
 			SetFileInfo(0, info, GetSaveName(param));
 
-			DEBUG_LOG(HLE,"%s Exist",fileDataPath.c_str());
+			DEBUG_LOG(SCEUTILITY,"%s Exist",fileDataPath.c_str());
 			saveNameListDataCount = 1;
 		}
 		else
@@ -1129,7 +1130,7 @@ int SavedataParam::SetPspParam(SceUtilitySavedataParam *param)
 			if (listEmptyFile)
 			{
 				ClearFileInfo(saveDataList[0], GetSaveName(param));
-				DEBUG_LOG(HLE,"Don't Exist");
+				DEBUG_LOG(SCEUTILITY,"Don't Exist");
 			}
 			saveNameListDataCount = 0;
 			return 0;
@@ -1159,7 +1160,7 @@ bool SavedataParam::CreatePNGIcon(u8* pngData, int pngSize, SaveFileInfo& info)
 	}
 	else
 	{
-		WARN_LOG(HLE, "Unable to load PNG data for savedata.");
+		WARN_LOG(SCEUTILITY, "Unable to load PNG data for savedata.");
 		return false;
 	}
 	return true;

@@ -73,12 +73,16 @@ extern u8 *m_pUncachedRAM;
 extern u8 *m_pPhysicalVRAM;
 extern u8 *m_pUncachedVRAM;
 
-// These replace RAM_SIZE and RAM_MASK, respectively.
+// These replace RAM_NORMAL_SIZE and RAM_NORMAL_MASK, respectively.
 extern u32 g_MemorySize;
 extern u32 g_MemoryMask;
 
 enum
 {
+	// This may be adjusted by remaster games.
+	RAM_NORMAL_SIZE = 0x02000000,
+	RAM_NORMAL_MASK = RAM_NORMAL_SIZE - 1,
+
 	VRAM_SIZE       = 0x200000,
 	VRAM_MASK       = VRAM_SIZE - 1,
 

@@ -220,6 +220,7 @@ public:
 					// Integer value passed in a float. Wraps and all, required for Monster Hunter.
 					pos[2] = (float)((u16)(s32)pos[2]) * (1.0f / 65535.0f);
 				}
+				// See https://github.com/hrydgard/ppsspp/pull/3419, something is weird.
 			}
 			break;
 		case DEC_S16_3:
@@ -315,7 +316,15 @@ public:
 				uv[1] = f[1];
 			}
 			break;
-
+			
+		case DEC_U8A_2:
+			{
+				const u8 *b = (const u8 *)(data_ + decFmt_.uvoff);
+				uv[0] = (float)b[0];
+				uv[1] = (float)b[1];
+			}
+			break;
+            		
 		case DEC_U16A_2:
 			{
 				const u16 *p = (const u16 *)(data_ + decFmt_.uvoff);
@@ -362,7 +371,7 @@ public:
 			memcpy(color, data_ + decFmt_.c1off, 12); 
 			break;
 		default:
-			ERROR_LOG_REPORT_ONCE(fmt, G3D, "Reader: Unsupported C1 Format %d", decFmt_.c0fmt);
+			ERROR_LOG_REPORT_ONCE(fmt, G3D, "Reader: Unsupported C1 Format %d", decFmt_.c1fmt);
 			memset(color, 0, sizeof(float) * 3);
 			break;
 		}

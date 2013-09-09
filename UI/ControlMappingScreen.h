@@ -15,6 +15,8 @@
 // Official git repository and contact information can be found at
 // https://github.com/hrydgard/ppsspp and http://www.ppsspp.org/.
 
+#pragma once
+
 #include "base/functional.h"
 #include "ui/view.h"
 #include "ui/ui_screen.h"
@@ -26,6 +28,7 @@ public:
 	ControlMappingScreen() {}
 protected:
 	virtual void CreateViews();
+	virtual UI::EventReturn OnBack(UI::EventParams &e);
 
 private:
 	UI::EventReturn OnDefaultMapping(UI::EventParams &params);
@@ -45,8 +48,8 @@ public:
 protected:
 	void CreatePopupContents(UI::ViewGroup *parent);
 
-	virtual bool FillVertical() { return false; }
-	virtual bool ShowButtons() { return true; }
+	virtual bool FillVertical() const { return false; }
+	virtual bool ShowButtons() const { return true; }
 	virtual void OnCompleted(DialogResult result) {}
 
 private:

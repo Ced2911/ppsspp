@@ -41,6 +41,8 @@ struct JitOptions
 	JitOptions()
 	{
 		enableBlocklink = true;
+		// WARNING: These options don't work properly with cache clearing.
+		// Need to find a smart way to handle before enabling.
 		immBranches = false;
 		continueBranches = false;
 		continueMaxInstructions = 300;
@@ -266,7 +268,7 @@ public:
 	AsmRoutineManager &Asm() { return asm_; }
 
 	void ClearCache();
-	void ClearCacheAt(u32 em_address);
+	void ClearCacheAt(u32 em_address, int length = 4);
 private:
 	void GetStateAndFlushAll(RegCacheState &state);
 	void RestoreState(const RegCacheState state);
@@ -383,6 +385,7 @@ private:
 		bool needsCheck_;
 		bool needsSkip_;
 		bool far_;
+		bool fast_;
 		u32 alignMask_;
 		u32 iaddr_;
 		X64Reg xaddr_;

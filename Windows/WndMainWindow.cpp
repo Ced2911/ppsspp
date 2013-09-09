@@ -21,6 +21,7 @@
 #include "Common/CommonWindows.h"
 
 #include <map>
+#include <string>
 
 #include "base/NativeApp.h"
 #include "Globals.h"
@@ -88,12 +89,15 @@ extern InputState input_state;
 #define HID_USAGE_GENERIC_MOUSE        ((USHORT) 0x02)
 #endif
 
+extern std::map<std::string, std::pair<std::string, int>> GetLangValuesMapping();
+
 namespace MainWindow
 {
 	HWND hwndMain;
 	HWND hwndDisplay;
 	HWND hwndGameList;
 	static HMENU menu;
+	static HMENU langMenu;
 
 	static HINSTANCE hInst;
 	static int cursorCounter = 0;
@@ -103,8 +107,8 @@ namespace MainWindow
 	static bool hideCursor = false;
 	static void *rawInputBuffer;
 	static size_t rawInputBufferSize;
-	static int currentSavestateSlot = 0;
-	static bool menusAreTranslated = false;
+	static std::map<int, std::string> initialMenuKeys;
+	static std::vector<std::string> countryCodes;
 
 #define MAX_LOADSTRING 100
 	const TCHAR *szTitle = TEXT("PPSSPP");
@@ -236,6 +240,29 @@ namespace MainWindow
 		}
 	}
 
+	// These are used as an offset
+	// to determine which menu item to change.
+	// Make sure to count(from 0) the separators too, when dealing with submenus!!
+	enum MenuID{
+		// Main menus
+		MENU_FILE = 0,
+		MENU_EMULATION = 1,
+		MENU_DEBUG = 2,
+		MENU_OPTIONS = 3,
+		MENU_LANGUAGE = 4,
+		MENU_HELP = 5,
+
+		// File submenus
+		SUBMENU_FILE_SAVESTATE_SLOT = 6,
+
+		// Game Settings submenus
+		SUBMENU_RENDERING_RESOLUTION = 7,
+		SUBMENU_RENDERING_MODE = 8,
+		SUBMENU_FRAME_SKIPPING = 9,
+		SUBMENU_TEXTURE_FILTERING = 10,
+		SUBMENU_TEXTURE_SCALING = 11,
+	};
+
 	std::string GetMenuItemText(int menuID) {
 		MENUITEMINFO menuInfo;
 		memset(&menuInfo, 0, sizeof(menuInfo));
@@ -255,27 +282,95 @@ namespace MainWindow
 		return retVal;
 	}
 
-	// These are used as an offset
-	// to determine which menu item to change.
-	// Make sure to count(from 0) the separators too, when dealing with submenus!!
-	enum MenuID{
-		// Main menus
-		MENU_FILE = 0,
-		MENU_EMULATION = 1,
-		MENU_DEBUG = 2,
-		MENU_OPTIONS = 3,
-		MENU_HELP = 4,
+	const std::string &GetMenuItemInitialText(const int menuID) {
+		if (initialMenuKeys.find(menuID) == initialMenuKeys.end()) {
+			initialMenuKeys[menuID] = GetMenuItemText(menuID);
+		}
+		return initialMenuKeys[menuID];
+	}
 
-		// Emulation submenus
-		SUBMENU_RENDERING_BACKEND = 11,
+	void CreateHelpMenu() {
+		HMENU helpMenu = CreatePopupMenu();
 
-		// Game Settings submenus
-		SUBMENU_RENDERING_RESOLUTION = 4,
-		SUBMENU_RENDERING_MODE = 5,
-		SUBMENU_FRAME_SKIPPING = 6,
-		SUBMENU_TEXTURE_FILTERING = 7,
-		SUBMENU_TEXTURE_SCALING = 8,
-	};
+		I18NCategory *desktopUI = GetI18NCategory("DesktopUI");
+
+		const std::wstring help = ConvertUTF8ToWString(desktopUI->T("Help"));
+		const std::wstring visitMainWebsite = ConvertUTF8ToWString(desktopUI->T("www.ppsspp.org"));
+		const std::wstring visitForum = ConvertUTF8ToWString(desktopUI->T("PPSSPP Forums"));
+		const std::wstring buyGold = ConvertUTF8ToWString(desktopUI->T("Buy Gold"));
+		const std::wstring aboutPPSSPP = ConvertUTF8ToWString(desktopUI->T("About PPSSPP..."));
+
+		// Simply remove the old help menu and create a new one.
+		RemoveMenu(menu, MENU_HELP, MF_BYPOSITION);
+		InsertMenu(menu, MENU_HELP, MF_POPUP | MF_STRING | MF_BYPOSITION, (UINT_PTR)helpMenu, help.c_str());
+
+		AppendMenu(helpMenu, MF_STRING | MF_BYCOMMAND, ID_HELP_OPENWEBSITE, visitMainWebsite.c_str());
+		AppendMenu(helpMenu, MF_STRING | MF_BYCOMMAND, ID_HELP_OPENFORUM, visitForum.c_str());
+		// Repeat the process for other languages, if necessary.
+		if(g_Config.languageIni == "zh_CN" || g_Config.languageIni == "zh_TW") {
+			const std::wstring visitChineseForum = ConvertUTF8ToWString(desktopUI->T("PPSSPP Chinese Forum"));
+			AppendMenu(helpMenu, MF_STRING | MF_BYCOMMAND, ID_HELP_CHINESE_FORUM, visitChineseForum.c_str());
+		}
+		AppendMenu(helpMenu, MF_STRING | MF_BYCOMMAND, ID_HELP_BUYGOLD, buyGold.c_str());
+		AppendMenu(helpMenu, MF_SEPARATOR, 0, 0);
+		AppendMenu(helpMenu, MF_STRING | MF_BYCOMMAND, ID_HELP_ABOUT, aboutPPSSPP.c_str());
+	}
+
+	void CreateLanguageMenu() {
+		// Please don't remove this boolean. 
+		// We don't want this menu to be created multiple times.
+		// We can change the checkmark when this menu has been created.
+		static bool langMenuCreated = false;
+
+		if(langMenuCreated) {
+			for (u32 index = 0; index < countryCodes.size(); ++index) {
+				if (!strcmp(countryCodes[index].c_str(),g_Config.languageIni.c_str())) {
+					CheckMenuItem(langMenu, index, MF_BYPOSITION | MF_CHECKED);
+					continue;
+				}
+				CheckMenuItem(langMenu, index, MF_BYPOSITION | MF_UNCHECKED);
+		    	} 
+			
+			return;
+		}
+
+		langMenu = CreatePopupMenu();
+
+		I18NCategory *c = GetI18NCategory("DesktopUI");
+		// Don't translate this right here, translate it in TranslateMenus. 
+		// Think of it as a string defined in ppsspp.rc.
+		const std::wstring languageKey = L"Language";
+
+		// Insert the new menu.
+		InsertMenu(menu, MENU_LANGUAGE, MF_POPUP | MF_STRING | MF_BYPOSITION, (UINT_PTR)langMenu, languageKey.c_str());
+
+		// Get the new menu's info and then set its ID so we can have it be translatable.
+		MENUITEMINFO menuItemInfo;
+		memset(&menuItemInfo, 0, sizeof(MENUITEMINFO));
+		menuItemInfo.cbSize = sizeof(MENUITEMINFO);
+		GetMenuItemInfo(menu, MENU_LANGUAGE, TRUE, &menuItemInfo);
+		menuItemInfo.fMask = MIIM_ID;
+		menuItemInfo.wID = ID_LANGUAGE_BASE;
+		SetMenuItemInfo(menu, MENU_LANGUAGE, TRUE, &menuItemInfo);
+
+		// Create the Language menu items by creating a new menu item for each
+		// language with its full name("English", "Magyar", etc.) as the value.
+		// Also collect the country codes while we're at it so we can send them to
+		// NativeMessageReceived easier.
+		auto langValuesMap = GetLangValuesMapping();
+
+		// Start adding items after ID_LANGUAGE_BASE.
+		int item = ID_LANGUAGE_BASE + 1;
+		std::wstring fullLanguageName;
+
+		for(auto i = langValuesMap.begin(); i != langValuesMap.end(); ++i) {
+			fullLanguageName = ConvertUTF8ToWString(i->second.first);
+			AppendMenu(langMenu, MF_STRING | MF_BYPOSITION | (g_Config.languageIni == i->first? MF_CHECKED : MF_UNCHECKED), item++, fullLanguageName.c_str());
+			countryCodes.push_back(i->first);
+		}
+
+		langMenuCreated = true;
+	}
 
 	void TranslateMenuItembyText(const int menuID, const char *menuText, const char *category="", const bool enabled = true, const bool checked = false, const std::wstring& accelerator = L"") {
 		I18NCategory *c = GetI18NCategory(category);
@@ -309,7 +404,7 @@ namespace MainWindow
 
 	void TranslateMenuItem(const int menuID, const char *category, const bool enabled = true, const bool checked = false, const std::wstring& accelerator = L"") {
 		I18NCategory *c = GetI18NCategory(category);
-		std::string key = c->T(GetMenuItemText(menuID).c_str());
+		std::string key = c->T(GetMenuItemInitialText(menuID).c_str());
 		std::wstring translated = ConvertUTF8ToWString(key);
 		translated.append(accelerator);
 		ModifyMenu(menu, menuID, MF_STRING 
@@ -319,9 +414,6 @@ namespace MainWindow
 	}
 
 	void TranslateMenus() {
-		if(menusAreTranslated) return;
-		menusAreTranslated = true;
-
 		const char *desktopUI = "DesktopUI";
 
 		// File menu
@@ -333,32 +425,33 @@ namespace MainWindow
 		TranslateMenuItem(ID_FILE_QUICKSAVESTATE, desktopUI, false, false, L"\tF2");
 		TranslateMenuItem(ID_FILE_LOADSTATEFILE, desktopUI, false, false);
 		TranslateMenuItem(ID_FILE_SAVESTATEFILE, desktopUI, false, false);
-		TranslateMenuItem(ID_FILE_EXIT, desktopUI);
+		TranslateMenuItem(ID_FILE_EXIT, desktopUI, true, false, L"\tAlt+F4");
 
 		// Emulation menu
 		bool isPaused = Core_IsStepping() && globalUIState == UISTATE_INGAME;
 		TranslateMenuItembyText(ID_TOGGLE_PAUSE, isPaused ? "Run" : "Pause", "DesktopUI", false, false, L"\tF8");
 		TranslateMenuItem(ID_EMULATION_STOP, desktopUI, false, false, L"\tCtrl+W");
 		TranslateMenuItem(ID_EMULATION_RESET, desktopUI, false, false, L"\tCtrl+B");
-		TranslateMenuItem(ID_EMULATION_RUNONLOAD, desktopUI);
+		TranslateMenuItem(ID_DEBUG_RUNONLOAD, desktopUI);
 		TranslateMenuItem(ID_EMULATION_SOUND, desktopUI, true, true);
 		TranslateMenuItem(ID_EMULATION_ATRAC3_SOUND, desktopUI, true, false);
-		TranslateMenuItem(ID_EMULATION_CHEATS, desktopUI);
+		TranslateMenuItem(ID_EMULATION_CHEATS, desktopUI,true, true, L"\tCtrl+T");
 		TranslateMenuItem(ID_EMULATION_RENDER_MODE_OGL, desktopUI, true, true);
 		TranslateMenuItem(ID_EMULATION_RENDER_MODE_SOFT, desktopUI);
 		TranslateMenuItem(ID_CPU_DYNAREC, desktopUI);
 		TranslateMenuItem(ID_CPU_MULTITHREADED, desktopUI);
 		TranslateMenuItem(ID_IO_MULTITHREADED, desktopUI);
-
+		
 		// Debug menu
 		TranslateMenuItem(ID_DEBUG_LOADMAPFILE, desktopUI);
 		TranslateMenuItem(ID_DEBUG_SAVEMAPFILE, desktopUI);
 		TranslateMenuItem(ID_DEBUG_RESETSYMBOLTABLE, desktopUI);
 		TranslateMenuItem(ID_DEBUG_DUMPNEXTFRAME, desktopUI);
+		TranslateMenuItem(ID_DEBUG_SHOWDEBUGSTATISTICS, desktopUI);
 		TranslateMenuItem(ID_DEBUG_TAKESCREENSHOT, desktopUI, true, false, L"\tF12");
 		TranslateMenuItem(ID_DEBUG_DISASSEMBLY, desktopUI, true, false, L"\tCtrl+D");
 		TranslateMenuItem(ID_DEBUG_LOG, desktopUI, true, false, L"\tCtrl+L");
-		TranslateMenuItem(ID_DEBUG_MEMORYVIEW, desktopUI, L"\tCtrl+M");
+		TranslateMenuItem(ID_DEBUG_MEMORYVIEW, desktopUI, true, false, L"\tCtrl+M");
 
 		// Options menu
 		TranslateMenuItem(ID_OPTIONS_FULLSCREEN, desktopUI, true, false, L"\tAlt+Return, F11");
@@ -374,6 +467,8 @@ namespace MainWindow
 		TranslateMenuItem(ID_OPTIONS_READFBOTOMEMORYGPU, desktopUI, true, false);
 		TranslateMenuItem(ID_OPTIONS_FRAMESKIP_0, desktopUI);
 		TranslateMenuItem(ID_OPTIONS_FRAMESKIP_AUTO, desktopUI);
+		TranslateMenuItem(ID_OPTIONS_MORE_SETTINGS, desktopUI);
+		TranslateMenuItem(ID_OPTIONS_CONTROLS, desktopUI);
 		// Skip frameskipping 2-8..
 		TranslateMenuItem(ID_OPTIONS_TEXTUREFILTERING_AUTO, desktopUI);
 		TranslateMenuItem(ID_OPTIONS_NEARESTFILTERING, desktopUI);
@@ -392,15 +487,14 @@ namespace MainWindow
 		TranslateMenuItem(ID_OPTIONS_ANTIALIASING, desktopUI);
 		TranslateMenuItem(ID_OPTIONS_VSYNC, desktopUI);
 		TranslateMenuItem(ID_OPTIONS_SHOWFPS, desktopUI);
-		TranslateMenuItem(ID_OPTIONS_SHOWDEBUGSTATISTICS, desktopUI);
 		TranslateMenuItem(ID_OPTIONS_FASTMEMORY, desktopUI);
-		TranslateMenuItem(ID_OPTIONS_IGNOREILLEGALREADS, desktopUI);
+		TranslateMenuItem(ID_DEBUG_IGNOREILLEGALREADS, desktopUI);
 
-		// Help menu
-		TranslateMenuItem(ID_HELP_OPENWEBSITE, desktopUI);
-		TranslateMenuItem(ID_HELP_OPENFORUM, desktopUI);
-		TranslateMenuItem(ID_HELP_BUYGOLD, desktopUI);
-		TranslateMenuItem(ID_HELP_ABOUT, desktopUI);
+		// Language menu
+		TranslateMenuItem(ID_LANGUAGE_BASE, desktopUI);
+
+		// Help menu: it's translated in CreateHelpMenu.
+		CreateHelpMenu();
 
 		// Now do the menu headers and a few submenus...
 		TranslateMenuHeader(menu, desktopUI, "File", MENU_FILE);
@@ -409,7 +503,7 @@ namespace MainWindow
 		TranslateMenuHeader(menu, desktopUI, "Game Settings", MENU_OPTIONS);
 		TranslateMenuHeader(menu, desktopUI, "Help", MENU_HELP);
 
-		TranslateSubMenuHeader(menu, desktopUI, "Rendering Backend", MENU_EMULATION, SUBMENU_RENDERING_BACKEND);
+		TranslateSubMenuHeader(menu, desktopUI, "Savestate Slot", MENU_FILE, SUBMENU_FILE_SAVESTATE_SLOT, L"\tF3");
 		TranslateSubMenuHeader(menu, desktopUI, "Rendering Resolution", MENU_OPTIONS, SUBMENU_RENDERING_RESOLUTION, L"\tCtrl+1");
 		TranslateSubMenuHeader(menu, desktopUI, "Rendering Mode", MENU_OPTIONS, SUBMENU_RENDERING_MODE, L"\tF5");
 		TranslateSubMenuHeader(menu, desktopUI, "Frame Skipping", MENU_OPTIONS, SUBMENU_FRAME_SKIPPING, L"\tF7");
@@ -417,6 +511,7 @@ namespace MainWindow
 		TranslateSubMenuHeader(menu, desktopUI, "Texture Scaling", MENU_OPTIONS, SUBMENU_TEXTURE_SCALING);
 
 		DrawMenuBar(hwndMain);
+		UpdateMenus();
 	}
 
 	void setTexScalingMultiplier(int level) {
@@ -475,14 +570,15 @@ namespace MainWindow
 		memset(message, 0, sizeof(message));
 
 		switch(g_Config.iFrameSkip) {
-		case 0:
+		case FRAMESKIP_OFF:
 			sprintf(message, "%s: %s", frameskipStr, offStr);
 			break;
-		case 1:
+		case FRAMESKIP_AUTO:
 			sprintf(message, "%s: %s", frameskipStr, autoStr);
 			break;
 		default:
-			sprintf(message, "%s: %d", frameskipStr, g_Config.iFrameSkip);
+			//1 means auto, 2 means 1, 3 means 2...
+			sprintf(message, "%s: %d", frameskipStr, g_Config.iFrameSkip - 1);
 			break;
 		}
 
@@ -904,6 +1000,9 @@ namespace MainWindow
 					EnableWindow(memoryWindow[0]->GetDlgHandle(),FALSE);
 
 					if (Core_IsStepping()) {
+						// If the current PC is on a breakpoint, disabling stepping doesn't work without
+						// explicitly skipping it
+						CBreakPoints::SetSkipFirst(currentMIPS->pc);
 						Core_EnableStepping(false);
 					}
 					NativeMessageReceived("stop", "");
@@ -911,14 +1010,32 @@ namespace MainWindow
 					break;
 
 				case ID_EMULATION_RESET:
-					if (Core_IsStepping()) {
-						Core_EnableStepping(false);
-					}
 					EnableWindow(disasmWindow[0]->GetDlgHandle(),FALSE);
 					EnableWindow(memoryWindow[0]->GetDlgHandle(),FALSE);
+
+					if (Core_IsStepping()) {
+						// If the current PC is on a breakpoint, disabling stepping doesn't work without
+						// explicitly skipping it
+						CBreakPoints::SetSkipFirst(currentMIPS->pc);
+						Core_EnableStepping(false);
+					}
+
 					NativeMessageReceived("reset", "");
 					break;
 				case ID_EMULATION_CHEATS:
+					g_Config.bEnableCheats = !g_Config.bEnableCheats;
+					osm.ShowOnOff(g->T("Cheats"), g_Config.bEnableCheats);
+					
+					EnableWindow(disasmWindow[0]->GetDlgHandle(),FALSE);
+					EnableWindow(memoryWindow[0]->GetDlgHandle(),FALSE);
+
+					if (Core_IsStepping()) {
+						// If the current PC is on a breakpoint, disabling stepping doesn't work without
+						// explicitly skipping it
+						CBreakPoints::SetSkipFirst(currentMIPS->pc);
+						Core_EnableStepping(false);
+					}
+
 					NativeMessageReceived("reset", "");
 					break;
 
@@ -947,21 +1064,41 @@ namespace MainWindow
 				// TODO: Improve UI for multiple slots
 				case ID_FILE_SAVESTATE_NEXT_SLOT:
 				{
-					currentSavestateSlot = (currentSavestateSlot + 1)%SaveState::SAVESTATESLOTS;
+					g_Config.iCurrentStateSlot = (g_Config.iCurrentStateSlot + 1) % SaveState::SAVESTATESLOTS;
 					char msg[30];
-					sprintf(msg, "Using save state slot %d.", currentSavestateSlot + 1);
+					sprintf(msg, "Using save state slot %d.", g_Config.iCurrentStateSlot + 1);
 					osm.Show(msg);
 					break;
 				}
 
+				case ID_FILE_SAVESTATE_SLOT_1:
+					g_Config.iCurrentStateSlot = 0;
+					break;
+
+				case ID_FILE_SAVESTATE_SLOT_2:
+					g_Config.iCurrentStateSlot = 1;
+					break;
+
+				case ID_FILE_SAVESTATE_SLOT_3:
+					g_Config.iCurrentStateSlot = 2;
+					break;
+
+				case ID_FILE_SAVESTATE_SLOT_4:
+					g_Config.iCurrentStateSlot = 3;
+					break;
+
+				case ID_FILE_SAVESTATE_SLOT_5:
+					g_Config.iCurrentStateSlot = 4;
+					break;
+
 				case ID_FILE_QUICKLOADSTATE:
 					SetCursor(LoadCursor(0, IDC_WAIT));
-					SaveState::LoadSlot(currentSavestateSlot, SaveStateActionFinished);
+					SaveState::LoadSlot(g_Config.iCurrentStateSlot, SaveStateActionFinished);
 					break;
 
 				case ID_FILE_QUICKSAVESTATE:
 					SetCursor(LoadCursor(0, IDC_WAIT));
-					SaveState::SaveSlot(currentSavestateSlot, SaveStateActionFinished);
+					SaveState::SaveSlot(g_Config.iCurrentStateSlot, SaveStateActionFinished);
 					break;
 
 				case ID_OPTIONS_SCREEN1X:
@@ -1058,7 +1195,7 @@ namespace MainWindow
 					setRenderingMode(g_Config.iRenderingMode);
 					break;
 
-				case ID_OPTIONS_SHOWDEBUGSTATISTICS:
+				case ID_DEBUG_SHOWDEBUGSTATISTICS:
 					g_Config.bShowDebugStats = !g_Config.bShowDebugStats;
 					break;
 
@@ -1079,6 +1216,10 @@ namespace MainWindow
 
 				case ID_OPTIONS_FRAMESKIP_AUTO:
 					setFrameSkipping(FRAMESKIP_AUTO);
+					break;
+
+				case ID_OPTIONS_FRAMESKIP_1:
+					setFrameSkipping(FRAMESKIP_1);
 					break;
 
 				case ID_OPTIONS_FRAMESKIP_2:
@@ -1131,7 +1272,7 @@ namespace MainWindow
 					g_Config.bSeparateIOThread = !g_Config.bSeparateIOThread;
 					break;
 
-				case ID_EMULATION_RUNONLOAD:
+				case ID_DEBUG_RUNONLOAD:
 					g_Config.bAutoRun = !g_Config.bAutoRun;
 					break;
 
@@ -1170,10 +1311,12 @@ namespace MainWindow
 					break;
 
 				case ID_DEBUG_DISASSEMBLY:
+					EnableWindow(disasmWindow[0]->GetDlgHandle(),TRUE);
 					disasmWindow[0]->Show(true);
 					break;
 
 				case ID_DEBUG_MEMORYVIEW:
+					EnableWindow(memoryWindow[0]->GetDlgHandle(),TRUE);
 					memoryWindow[0]->Show(true);
 					break;
 
@@ -1181,7 +1324,7 @@ namespace MainWindow
 					LogManager::GetInstance()->GetConsoleListener()->Show(LogManager::GetInstance()->GetConsoleListener()->Hidden());
 					break;
 
-				case ID_OPTIONS_IGNOREILLEGALREADS:
+				case ID_DEBUG_IGNOREILLEGALREADS:
 					g_Config.bIgnoreBadMemAccess = !g_Config.bIgnoreBadMemAccess;
 					break;
 
@@ -1227,13 +1370,14 @@ namespace MainWindow
 					W32Util::MakeTopMost(hWnd, g_Config.bTopMost);
 					break;
 
-				case ID_OPTIONS_ANTIALIASING:
-					g_Config.bAntiAliasing = !g_Config.bAntiAliasing;
-					ResizeDisplay(true);
+				case ID_OPTIONS_CONTROLS:
+					NativeMessageReceived("control mapping", "");
+					globalUIState = UISTATE_MENU;
 					break;
 
-				case ID_OPTIONS_CONTROLS:
-					MessageBox(hWnd, L"Control mapping has been moved to the in-window Settings menu.\n", L"Sorry", 0);
+				case ID_OPTIONS_MORE_SETTINGS:
+					NativeMessageReceived("settings", "");
+					globalUIState = UISTATE_MENU;
 					break;
 
 				case ID_EMULATION_SOUND:
@@ -1272,6 +1416,10 @@ namespace MainWindow
 					ShellExecute(NULL, L"open", L"http://forums.ppsspp.org/", NULL, NULL, SW_SHOWNORMAL);
 					break;
 
+				case ID_HELP_CHINESE_FORUM:
+					ShellExecute(NULL, L"open", L"http://tieba.baidu.com/f?ie=utf-8&kw=ppsspp", NULL, NULL, SW_SHOWNORMAL);
+					break;
+
 				case ID_HELP_ABOUT:
 					DialogManager::EnableAll(FALSE);
 					DialogBox(hInst, (LPCTSTR)IDD_ABOUTBOX, hWnd, (DLGPROC)About);
@@ -1283,7 +1431,26 @@ namespace MainWindow
 					break;
 
 				default:
-					MessageBox(hwndMain, L"Unimplemented", L"Sorry",0);
+					{
+						// Just handle language switching here.
+						// The Menu ID is contained in wParam, so subtract
+						// ID_LANGUAGE_BASE and an additional 1 off it.
+						u32 index = (wParam - ID_LANGUAGE_BASE - 1);
+						if(index >= 0 && index < countryCodes.size()) {
+							std::string oldLang = g_Config.languageIni;
+							g_Config.languageIni = countryCodes[index];
+
+							if(i18nrepo.LoadIni(g_Config.languageIni)) {
+								NativeMessageReceived("language", "");
+								PostMessage(hwndMain, WM_USER_UPDATE_UI, 0, 0);
+							}
+							else
+								g_Config.languageIni = oldLang;
+
+							break;
+						}
+						MessageBox(hwndMain, L"Unimplemented", L"Sorry",0);
+					}
 					break;
 				}
 			}
@@ -1419,6 +1586,16 @@ namespace MainWindow
 				EnableMenuItem(menu, ID_EMULATION_ATRAC3_SOUND, MF_GRAYED);
 			break;
 
+		case WM_USER_UPDATE_UI:
+			CreateLanguageMenu();
+			TranslateMenus();
+			Update();
+			break;
+
+		case WM_USER_UPDATE_SCREEN:
+			ResizeDisplay(true);
+			break;
+
 		case WM_MENUSELECT:
 			// Unfortunately, accelerate keys (hotkeys) shares the same enabled/disabled states
 			// with corresponding menu items.
@@ -1448,16 +1625,16 @@ namespace MainWindow
 	void UpdateMenus() {
 		HMENU menu = GetMenu(GetHWND());
 #define CHECKITEM(item,value) 	CheckMenuItem(menu,item,MF_BYCOMMAND | ((value) ? MF_CHECKED : MF_UNCHECKED));
-		CHECKITEM(ID_OPTIONS_IGNOREILLEGALREADS,g_Config.bIgnoreBadMemAccess);
-		CHECKITEM(ID_CPU_DYNAREC,g_Config.bJit == true);
+		CHECKITEM(ID_DEBUG_IGNOREILLEGALREADS, g_Config.bIgnoreBadMemAccess);
+		CHECKITEM(ID_CPU_DYNAREC, g_Config.bJit == true);
 		CHECKITEM(ID_CPU_MULTITHREADED, g_Config.bSeparateCPUThread);
 		CHECKITEM(ID_IO_MULTITHREADED, g_Config.bSeparateIOThread);
-		CHECKITEM(ID_OPTIONS_SHOWDEBUGSTATISTICS, g_Config.bShowDebugStats);
+		CHECKITEM(ID_DEBUG_SHOWDEBUGSTATISTICS, g_Config.bShowDebugStats);
 		CHECKITEM(ID_OPTIONS_HARDWARETRANSFORM, g_Config.bHardwareTransform);
 		CHECKITEM(ID_OPTIONS_FASTMEMORY, g_Config.bFastMemory);
 		CHECKITEM(ID_OPTIONS_ANTIALIASING, g_Config.bAntiAliasing);
 		CHECKITEM(ID_OPTIONS_STRETCHDISPLAY, g_Config.bStretchToDisplay);
-		CHECKITEM(ID_EMULATION_RUNONLOAD, g_Config.bAutoRun);
+		CHECKITEM(ID_DEBUG_RUNONLOAD, g_Config.bAutoRun);
 		CHECKITEM(ID_OPTIONS_VERTEXCACHE, g_Config.bVertexCache);
 		CHECKITEM(ID_OPTIONS_SHOWFPS, g_Config.iShowFPSCounter);
 		CHECKITEM(ID_OPTIONS_FRAMESKIP, g_Config.iFrameSkip != 0);
@@ -1469,6 +1646,7 @@ namespace MainWindow
 		CHECKITEM(ID_EMULATION_ATRAC3_SOUND, g_Config.bEnableAtrac3plus);
 		CHECKITEM(ID_EMULATION_RENDER_MODE_OGL, g_Config.bSoftwareRendering == false);
 		CHECKITEM(ID_EMULATION_RENDER_MODE_SOFT, g_Config.bSoftwareRendering == true);
+		CHECKITEM(ID_EMULATION_CHEATS, g_Config.bEnableCheats);
 
 		static const int zoomitems[4] = {
 			ID_OPTIONS_SCREEN1X,
@@ -1554,6 +1732,7 @@ namespace MainWindow
 		static const int frameskipping[] = {
 			ID_OPTIONS_FRAMESKIP_0,
 			ID_OPTIONS_FRAMESKIP_AUTO,
+			ID_OPTIONS_FRAMESKIP_1,
 			ID_OPTIONS_FRAMESKIP_2,
 			ID_OPTIONS_FRAMESKIP_3,
 			ID_OPTIONS_FRAMESKIP_4,
@@ -1570,6 +1749,24 @@ namespace MainWindow
 
 		for (int i = 0; i < ARRAY_SIZE(frameskipping); i++) {
 			CheckMenuItem(menu, frameskipping[i], MF_BYCOMMAND | ( i == g_Config.iFrameSkip )? MF_CHECKED : MF_UNCHECKED);
+		}
+
+		static const int savestateSlot[] = {
+			ID_FILE_SAVESTATE_SLOT_1,
+			ID_FILE_SAVESTATE_SLOT_2,
+			ID_FILE_SAVESTATE_SLOT_3,
+			ID_FILE_SAVESTATE_SLOT_4,
+			ID_FILE_SAVESTATE_SLOT_5,
+		};
+
+		if(g_Config.iCurrentStateSlot < 0)
+			g_Config.iCurrentStateSlot = 0;
+
+		else if(g_Config.iCurrentStateSlot >= SaveState::SAVESTATESLOTS)
+			g_Config.iCurrentStateSlot = SaveState::SAVESTATESLOTS - 1;
+
+		for (int i = 0; i < ARRAY_SIZE(savestateSlot); i++) {
+			CheckMenuItem(menu, savestateSlot[i], MF_BYCOMMAND | ( i == g_Config.iCurrentStateSlot )? MF_CHECKED : MF_UNCHECKED);
 		}
 
 		UpdateCommands();
@@ -1594,14 +1791,12 @@ namespace MainWindow
 		EnableMenuItem(menu, ID_TOGGLE_PAUSE, ingameEnable);
 		EnableMenuItem(menu, ID_EMULATION_STOP, ingameEnable);
 		EnableMenuItem(menu, ID_EMULATION_RESET, ingameEnable);
-		EnableMenuItem(menu, ID_EMULATION_CHEATS, ingameEnable);
-
+		
 		UINT menuEnable = globalUIState == UISTATE_MENU ? MF_ENABLED : MF_GRAYED;
 		EnableMenuItem(menu, ID_FILE_SAVESTATEFILE, !menuEnable);
 		EnableMenuItem(menu, ID_FILE_LOADSTATEFILE, !menuEnable);
 		EnableMenuItem(menu, ID_FILE_QUICKSAVESTATE, !menuEnable);
 		EnableMenuItem(menu, ID_FILE_QUICKLOADSTATE, !menuEnable);
-		EnableMenuItem(menu, ID_EMULATION_CHEATS, !menuEnable);
 		EnableMenuItem(menu, ID_CPU_DYNAREC, menuEnable);
 		EnableMenuItem(menu, ID_CPU_MULTITHREADED, menuEnable);
 		EnableMenuItem(menu, ID_IO_MULTITHREADED, menuEnable);

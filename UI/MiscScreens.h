@@ -43,12 +43,8 @@ protected:
 
 class PromptScreen : public UIDialogScreenWithBackground {
 public:
-	PromptScreen(std::string message, std::string yesButtonText, std::string noButtonText)
-		: message_(message), yesButtonText_(yesButtonText), noButtonText_(noButtonText) {
-		callback_ = &NoOpVoidBool;
-	}
-	PromptScreen(std::string message, std::string yesButtonText, std::string noButtonText, std::function<void(bool)> callback)
-		: message_(message), yesButtonText_(yesButtonText), noButtonText_(noButtonText), callback_(callback) {}
+	PromptScreen(std::string message, std::string yesButtonText, std::string noButtonText, 
+		std::function<void(bool)> callback = &NoOpVoidBool);
 
 	virtual void CreateViews();
 
@@ -108,11 +104,6 @@ private:
 	int frames_;
 };
 
-class SystemInfoScreen : public UIDialogScreenWithBackground {
-public:
-	SystemInfoScreen() {}
-	virtual void CreateViews();
-};
 
 // Utility functions that create various popup screens
 ListPopupScreen *CreateLanguageScreen();

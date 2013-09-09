@@ -364,7 +364,26 @@ GLES_GPU::GLES_GPU()
 	} else {
 		glstate.SetVSyncInterval(g_Config.bVSync ? 1 : 0);
 	}
+	
+#ifdef ANDROID
+	if (gl_extensions.QCOM_binning_control)
+		/*
+		We can try different HINTS later or even with option to toggle for Adreno GPU
 
+		CPU_OPTIMIZED_QCOM                
+		- binning algorithm focuses on lower CPU utilization (this path increases vertex processing
+		
+		GPU_OPTIMIZED_QCOM					
+		- binning algorithm focuses on lower GPU utilization (this path increases CPU usage
+		
+		RENDER_DIRECT_TO_FRAMEBUFFER_QCOM 
+		- render directly to the final framebuffer and bypass tile memory 
+		(this path has a low CPU usage, but in some cases uses more memory bandwidth)
+		
+		*/
+		glHint(GL_BINNING_CONTROL_HINT_QCOM, GL_RENDER_DIRECT_TO_FRAMEBUFFER_QCOM);
+ #endif
+ 
 	shaderManager_ = new ShaderManager();
 	transformDraw_.SetShaderManager(shaderManager_);
 	transformDraw_.SetTextureCache(&textureCache_);
@@ -611,7 +630,7 @@ inline void GLES_GPU::CheckFlushOp(int cmd, u32 diff) {
 	u8 cmdFlags = commandFlags_[cmd];
 	if ((cmdFlags & FLAG_FLUSHBEFORE) || (diff && (cmdFlags & FLAG_FLUSHBEFOREONCHANGE))) {
 		if (dumpThisFrame_) {
-			NOTICE_LOG(HLE, "================ FLUSH ================");
+			NOTICE_LOG(G3D, "================ FLUSH ================");
 		}
 		transformDraw_.Flush();
 	}
@@ -645,7 +664,10 @@ void GLES_GPU::ExecuteOp(u32 op, u32 diff) {
 
 			u32 count = data & 0xFFFF;
 			GEPrimitiveType prim = static_cast<GEPrimitiveType>(data >> 16);
-
+			
+			if (count == 0)
+				break;
+				
 			// Discard AA lines as we can't do anything that makes sense with these anyway. The SW plugin might, though.
 			
 			// Discard AA lines in DOA
@@ -1141,7 +1163,7 @@ void GLES_GPU::ExecuteOp(u32 op, u32 diff) {
 	case GE_CMD_ALPHATEST:
 #ifndef USING_GLES2
 		if (((data >> 16) & 0xFF) != 0xFF && (data & 7) > 1)
-			WARN_LOG_REPORT_ONCE(alphatestmask, HLE, "Unsupported alphatest mask: %02x", (data >> 16) & 0xFF);
+			WARN_LOG_REPORT_ONCE(alphatestmask, G3D, "Unsupported alphatest mask: %02x", (data >> 16) & 0xFF);
 		// Intentional fallthrough.
 #endif
 
@@ -1350,7 +1372,17 @@ void GLES_GPU::DoBlockTransfer() {
 	int bpp = gstate.getTransferBpp();
 
 	DEBUG_LOG(G3D, "Block transfer: %08x/%x -> %08x/%x, %ix%ix%i (%i,%i)->(%i,%i)", srcBasePtr, srcStride, dstBasePtr, dstStride, width, height, bpp, srcX, srcY, dstX, dstY);
+	
+	if (!Memory::IsValidAddress(srcBasePtr)) {
+		ERROR_LOG_REPORT(G3D, "BlockTransfer: Bad source transfer address %08x!", srcBasePtr);
+		return;
+	}
 
+	if (!Memory::IsValidAddress(dstBasePtr)) {
+		ERROR_LOG_REPORT(G3D, "BlockTransfer: Bad destination transfer address %08x!", dstBasePtr);
+		return;
+	}
+	
 	// Do the copy!
 	for (int y = 0; y < height; y++) {
 		const u8 *src = Memory::GetPointer(srcBasePtr + ((y + srcY) * srcStride + srcX) * bpp);

@@ -15,10 +15,12 @@
 // Official git repository and contact information can be found at
 // https://github.com/hrydgard/ppsspp and http://www.ppsspp.org/.
 
+#include <WinNls.h>
 #include "Common/CommonWindows.h"
 
 #include "file/vfs.h"
 #include "file/zip_read.h"
+#include "base/NativeApp.h"
 #include "util/text/utf8.h"
 
 #include "Core/Config.h"
@@ -50,12 +52,21 @@
 CDisasm *disasmWindow[MAX_CPUCOUNT] = {0};
 CMemoryDlg *memoryWindow[MAX_CPUCOUNT] = {0};
 
+static std::string langRegion;
+
 void LaunchBrowser(const char *url) {
 	ShellExecute(NULL, L"open", ConvertUTF8ToWString(url).c_str(), NULL, NULL, SW_SHOWNORMAL);
 }
 
-std::string System_GetName() {
-	return "PC:Windows";
+std::string System_GetProperty(SystemProperty prop) {
+	switch (prop) {
+	case SYSPROP_NAME:
+		return "PC:Windows";
+	case SYSPROP_LANGREGION:
+		return langRegion;
+	default:
+		return "";
+	}
 }
 
 int WINAPI WinMain(HINSTANCE _hInstance, HINSTANCE hPrevInstance, LPSTR szCmdLine, int iCmdShow)
@@ -79,7 +90,6 @@ int WINAPI WinMain(HINSTANCE _hInstance, HINSTANCE hPrevInstance, LPSTR szCmdLin
 	hideLog = false;
 #endif
 
-
 	// The rest is handled in NativeInit().
 	for (int i = 1; i < __argc; ++i)
 	{
@@ -101,14 +111,28 @@ int WINAPI WinMain(HINSTANCE _hInstance, HINSTANCE hPrevInstance, LPSTR szCmdLin
 		}
 	}
 
+	VFSRegister("", new DirectoryAssetReader("assets/"));
+	VFSRegister("", new DirectoryAssetReader(""));
+
+	wchar_t lcCountry[256];
+
+	// LOCALE_SNAME is only available in WinVista+
+	// Really should find a way to do this in XP too :/
+	if (0 != GetLocaleInfo(LOCALE_NAME_USER_DEFAULT, LOCALE_SNAME, lcCountry, 256)) {
+		langRegion = ConvertWStringToUTF8(lcCountry);
+		for (int i = 0; i < langRegion.size(); i++) {
+			if (langRegion[i] == '-')
+				langRegion[i] = '_';
+		}
+	} else {
+		langRegion = "en_US";
+	}
+
 	g_Config.Load();
 
 	LogManager::Init();
 	LogManager::GetInstance()->GetConsoleListener()->Open(hideLog, 150, 120, "PPSSPP Debug Console");
-	LogManager::GetInstance()->SetLogLevel(LogTypes::G3D, LogTypes::LERROR);
 
-	VFSRegister("", new DirectoryAssetReader("assets/"));
-	VFSRegister("", new DirectoryAssetReader(""));
 
 	//Windows, API init stuff
 	INITCOMMONCONTROLSEX comm;

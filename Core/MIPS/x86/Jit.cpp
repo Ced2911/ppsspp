@@ -17,6 +17,7 @@
 
 #include <algorithm>
 #include <iterator>
+
 #include "Common/ChunkFile.h"
 #include "Core/Core.h"
 #include "Core/System.h"
@@ -31,8 +32,8 @@
 #include "RegCache.h"
 #include "Jit.h"
 
-#include "../../Host.h"
-#include "../../Debugger/Breakpoints.h"
+#include "Core/Host.h"
+#include "Core/Debugger/Breakpoints.h"
 
 namespace MIPSComp
 {
@@ -188,10 +189,9 @@ void Jit::ClearCache()
 	ClearCodeSpace();
 }
 
-void Jit::ClearCacheAt(u32 em_address)
+void Jit::ClearCacheAt(u32 em_address, int length)
 {
-	// TODO: Properly.
-	ClearCache();
+	blocks.InvalidateICache(em_address, length);
 }
 
 void Jit::CompileDelaySlot(int flags, RegCacheState *state)
@@ -230,8 +230,12 @@ void Jit::CompileAt(u32 addr)
 void Jit::EatInstruction(MIPSOpcode op)
 {
 	MIPSInfo info = MIPSGetInfo(op);
-	_dbg_assert_msg_(JIT, !(info & DELAYSLOT), "Never eat a branch op.");
-	_dbg_assert_msg_(JIT, !js.inDelaySlot, "Never eat an instruction inside a delayslot.");
+	if (info & DELAYSLOT) {
+		ERROR_LOG_REPORT_ONCE(ateDelaySlot, JIT, "Ate a branch op.");
+	}
+	if (js.inDelaySlot) {
+		ERROR_LOG_REPORT_ONCE(ateInDelaySlot, JIT, "Ate an instruction inside a delay slot.")
+	}
 
 	CheckJitBreakpoint(js.compilerPC + 4, 0);
 	js.numInstructions++;
@@ -267,7 +271,7 @@ void Jit::RunLoopUntil(u64 globalticks)
 {
 	// TODO: copy globalticks somewhere
 	((void (*)())asm_.enterCode)();
-	// NOTICE_LOG(HLE, "Exited jitted code at %i, corestate=%i, dc=%i", CoreTiming::GetTicks() / 1000, (int)coreState, CoreTiming::downcount);
+	// NOTICE_LOG(JIT, "Exited jitted code at %i, corestate=%i, dc=%i", CoreTiming::GetTicks() / 1000, (int)coreState, CoreTiming::downcount);
 }
 
 const u8 *Jit::DoJit(u32 em_address, JitBlock *b)
@@ -348,7 +352,7 @@ const u8 *Jit::DoJit(u32 em_address, JitBlock *b)
 void Jit::Comp_RunBlock(MIPSOpcode op)
 {
 	// This shouldn't be necessary, the dispatcher should catch us before we get here.
-	ERROR_LOG(DYNA_REC, "Comp_RunBlock");
+	ERROR_LOG(JIT, "Comp_RunBlock");
 }
 
 void Jit::Comp_Generic(MIPSOpcode op)
@@ -512,6 +516,8 @@ Jit::JitSafeMem::JitSafeMem(Jit *jit, MIPSGPReg raddr, s32 offset, u32 alignMask
 		iaddr_ = jit_->gpr.GetImmediate32(raddr_) + offset_;
 	else
 		iaddr_ = (u32) -1;
+
+	fast_ = g_Config.bFastMemory || raddr == MIPS_REG_SP;
 }
 
 void Jit::JitSafeMem::SetFar()
@@ -583,7 +589,7 @@ OpArg Jit::JitSafeMem::NextFastAddress(int suboffset)
 #endif
 	}
 
-	_dbg_assert_msg_(HLE, (suboffset & alignMask_) == suboffset, "suboffset must be aligned");
+	_dbg_assert_msg_(JIT, (suboffset & alignMask_) == suboffset, "suboffset must be aligned");
 
 #ifdef _M_IX86
 	return MDisp(xaddr_, (u32) Memory::base + offset_ + suboffset);
@@ -598,7 +604,7 @@ OpArg Jit::JitSafeMem::PrepareMemoryOpArg(ReadType type)
 	bool needTemp = alignMask_ != 0xFFFFFFFF;
 #ifdef _M_IX86
 	// We always mask on 32 bit in fast memory mode.
-	needTemp = needTemp || g_Config.bFastMemory;
+	needTemp = needTemp || fast_;
 #endif
 
 	if (jit_->gpr.R(raddr_).IsSimpleReg() && !needTemp)
@@ -614,7 +620,7 @@ OpArg Jit::JitSafeMem::PrepareMemoryOpArg(ReadType type)
 
 	MemCheckAsm(type);
 
-	if (!g_Config.bFastMemory)
+	if (!fast_)
 	{
 		// Is it in physical ram?
 		jit_->CMP(32, R(xaddr_), Imm32(PSP_GetKernelMemoryBase() - offset_));
@@ -668,9 +674,9 @@ bool Jit::JitSafeMem::PrepareSlowWrite()
 {
 	// If it's immediate, we only need a slow write on invalid.
 	if (iaddr_ != (u32) -1)
-		return !g_Config.bFastMemory && !ImmValid();
+		return !fast_ && !ImmValid();
 
-	if (!g_Config.bFastMemory)
+	if (!fast_)
 	{
 		PrepareSlowAccess();
 		return true;
@@ -696,7 +702,7 @@ void Jit::JitSafeMem::DoSlowWrite(void *safeFunc, const OpArg src, int suboffset
 
 bool Jit::JitSafeMem::PrepareSlowRead(void *safeFunc)
 {
-	if (!g_Config.bFastMemory)
+	if (!fast_)
 	{
 		if (iaddr_ != (u32) -1)
 		{
@@ -723,7 +729,7 @@ bool Jit::JitSafeMem::PrepareSlowRead(void *safeFunc)
 
 void Jit::JitSafeMem::NextSlowRead(void *safeFunc, int suboffset)
 {
-	_dbg_assert_msg_(JIT, !g_Config.bFastMemory, "NextSlowRead() called in fast memory mode?");
+	_dbg_assert_msg_(JIT, !fast_, "NextSlowRead() called in fast memory mode?");
 
 	// For simplicity, do nothing for 0.  We already read in PrepareSlowRead().
 	if (suboffset == 0)

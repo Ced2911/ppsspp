@@ -19,26 +19,24 @@
 
 #include "HLETables.h"
 
-#include "sceCcc.h"
-#include "sceCtrl.h"
-#include "sceDisplay.h"
-#include "sceHttp.h"
 #include "sceAtrac.h"
-#include "sceIo.h"
-#include "sceHprm.h"
-#include "scePower.h"
-#include "sceFont.h"
-#include "sceNet.h"
-#include "sceMpeg.h"
-#include "sceImpose.h"
-#include "sceGe.h"
-#include "scePsmf.h"
-#include "sceRtc.h"
-#include "sceSas.h"
-#include "sceUmd.h"
+#include "sceAudio.h"
+#include "sceAudiocodec.h"
+#include "sceCcc.h"
+#include "sceChnnlsv.h"
+#include "sceCtrl.h"
+#include "sceDeflt.h"
+#include "sceDisplay.h"
 #include "sceDmac.h"
-#include "sceRtc.h"
-#include "sceOpenPSID.h"
+#include "sceFont.h"
+#include "sceGameUpdate.h"
+#include "sceGe.h"
+#include "sceHeap.h"
+#include "sceHprm.h"
+#include "sceHttp.h"
+#include "sceImpose.h"
+#include "sceIo.h"
+#include "sceJpeg.h"
 #include "sceKernel.h"
 #include "sceKernelEventFlag.h"
 #include "sceKernelMemory.h"
@@ -47,25 +45,28 @@
 #include "sceKernelSemaphore.h"
 #include "sceKernelThread.h"
 #include "sceKernelTime.h"
-#include "sceAudio.h"
-#include "sceUtility.h"
-#include "sceParseUri.h"
-#include "sceSsl.h"
-#include "sceParseHttp.h"
-#include "sceVaudio.h"
-#include "sceUsb.h"
-#include "sceChnnlsv.h"
-#include "scePspNpDrm_user.h"
-#include "sceP3da.h"
-#include "sceGameUpdate.h"
-#include "sceDeflt.h"
+#include "sceMd5.h"
 #include "sceMp4.h"
 #include "sceMp3.h"
-#include "scePauth.h"
+#include "sceNet.h"
+#include "sceNetAdhoc.h"
 #include "sceNp.h"
-#include "sceMd5.h"
-#include "sceJpeg.h"
-#include "sceAudiocodec.h"
+#include "sceMpeg.h"
+#include "sceOpenPSID.h"
+#include "sceP3da.h"
+#include "sceParseHttp.h"
+#include "sceParseUri.h"
+#include "scePauth.h"
+#include "scePower.h"
+#include "scePspNpDrm_user.h"
+#include "scePsmf.h"
+#include "sceRtc.h"
+#include "sceSas.h"
+#include "sceSsl.h"
+#include "sceUmd.h"
+#include "sceUsb.h"
+#include "sceUtility.h"
+#include "sceVaudio.h"
 
 #define N(s) s
 
@@ -91,14 +92,14 @@ const HLEFunction UtilsForUser[] =
 	{0x27CC57F0, WrapU_U<sceKernelLibcTime>, "sceKernelLibcTime"},
 	{0x71EC4271, WrapU_UU<sceKernelLibcGettimeofday>, "sceKernelLibcGettimeofday"},
 	{0xBFA98062, WrapI_UI<sceKernelDcacheInvalidateRange>, "sceKernelDcacheInvalidateRange"},
-	{0xC8186A58, 0, "sceKernelUtilsMd5Digest"},
-	{0x9E5C5086, 0, "sceKernelUtilsMd5BlockInit"},
-	{0x61E1E525, 0, "sceKernelUtilsMd5BlockUpdate"},
-	{0xB8D24E78, 0, "sceKernelUtilsMd5BlockResult"},
-	{0x840259F1, 0, "sceKernelUtilsSha1Digest"},
-	{0xF8FCD5BA, 0, "sceKernelUtilsSha1BlockInit"},
-	{0x346F6DA8, 0, "sceKernelUtilsSha1BlockUpdate"},
-	{0x585F1C09, 0, "sceKernelUtilsSha1BlockResult"},
+	{0xC8186A58, WrapI_UIU<sceKernelUtilsMd5Digest>, "sceKernelUtilsMd5Digest"},
+	{0x9E5C5086, WrapI_U<sceKernelUtilsMd5BlockInit>, "sceKernelUtilsMd5BlockInit"},
+	{0x61E1E525, WrapI_UUI<sceKernelUtilsMd5BlockUpdate>, "sceKernelUtilsMd5BlockUpdate"},
+	{0xB8D24E78, WrapI_UU<sceKernelUtilsMd5BlockResult>, "sceKernelUtilsMd5BlockResult"},
+	{0x840259F1, WrapI_UIU<sceKernelUtilsSha1Digest>, "sceKernelUtilsSha1Digest"},
+	{0xF8FCD5BA, WrapI_U<sceKernelUtilsSha1BlockInit>, "sceKernelUtilsSha1BlockInit"},
+	{0x346F6DA8, WrapI_UUI<sceKernelUtilsSha1BlockUpdate>, "sceKernelUtilsSha1BlockUpdate"},
+	{0x585F1C09, WrapI_UU<sceKernelUtilsSha1BlockResult>, "sceKernelUtilsSha1BlockResult"},
 	{0xE860E75E, WrapU_UU<sceKernelUtilsMt19937Init>, "sceKernelUtilsMt19937Init"},
 	{0x06FB8A63, WrapU_U<sceKernelUtilsMt19937UInt>, "sceKernelUtilsMt19937UInt"},
 	{0x37FB5C42, WrapU_V<sceKernelGetGPI>, "sceKernelGetGPI"},
@@ -274,6 +275,7 @@ void RegisterAllModules() {
 	Register_sceSasCore();
 	Register_sceFont();
 	Register_sceNet();
+	Register_sceNetAdhoc();
 	Register_sceRtc();
 	Register_sceWlanDrv();
 	Register_sceMpeg();
@@ -309,6 +311,7 @@ void RegisterAllModules() {
 	Register_sceMd5();
 	Register_sceJpeg();
 	Register_sceAudiocodec();
+	Register_sceHeap();
 
 	for (int i = 0; i < numModules; i++)
 	{

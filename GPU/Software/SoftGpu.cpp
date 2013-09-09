@@ -192,7 +192,7 @@ void CopyToCurrentFboFromRam(u8* data, int srcwidth, int srcheight, int dstwidth
 				break;
 
 			default:
-				ERROR_LOG_REPORT(G3D, "Unexpected framebuffer format: %d", gstate.FrameBufFormat());
+				ERROR_LOG_REPORT(G3D, "Software: Unexpected framebuffer format: %d", gstate.FrameBufFormat());
 			}
 		}
 
@@ -304,12 +304,12 @@ void SoftGPU::ExecuteOp(u32 op, u32 diff)
 			};
 
 			if (type != GE_PRIM_TRIANGLES && type != GE_PRIM_TRIANGLE_STRIP && type != GE_PRIM_TRIANGLE_FAN && type != GE_PRIM_RECTANGLES) {
-				ERROR_LOG(G3D, "DL DrawPrim type: %s count: %i vaddr= %08x, iaddr= %08x", type<7 ? types[type] : "INVALID", count, gstate_c.vertexAddr, gstate_c.indexAddr);
+				ERROR_LOG_REPORT(G3D, "Software: DL DrawPrim type: %s count: %i vaddr= %08x, iaddr= %08x", type<7 ? types[type] : "INVALID", count, gstate_c.vertexAddr, gstate_c.indexAddr);
 				break;
 			}
 
 			if (!Memory::IsValidAddress(gstate_c.vertexAddr)) {
-				ERROR_LOG(G3D, "Bad vertex address %08x!", gstate_c.vertexAddr);
+				ERROR_LOG_REPORT(G3D, "Software: Bad vertex address %08x!", gstate_c.vertexAddr);
 				break;
 			}
 
@@ -317,7 +317,7 @@ void SoftGPU::ExecuteOp(u32 op, u32 diff)
 			void *indices = NULL;
 			if ((gstate.vertType & GE_VTYPE_IDX_MASK) != GE_VTYPE_IDX_NONE) {
 				if (!Memory::IsValidAddress(gstate_c.indexAddr)) {
-					ERROR_LOG(G3D, "Bad index address %08x!", gstate_c.indexAddr);
+					ERROR_LOG_REPORT(G3D, "Software: Bad index address %08x!", gstate_c.indexAddr);
 					break;
 				}
 				indices = Memory::GetPointer(gstate_c.indexAddr);
@@ -344,7 +344,7 @@ void SoftGPU::ExecuteOp(u32 op, u32 diff)
 			int sp_vtype = (data >> 18) & 0x3;
 
 			if (!Memory::IsValidAddress(gstate_c.vertexAddr)) {
-				ERROR_LOG(G3D, "Bad vertex address %08x!", gstate_c.vertexAddr);
+				ERROR_LOG_REPORT(G3D, "Software: Bad vertex address %08x!", gstate_c.vertexAddr);
 				break;
 			}
 
@@ -352,14 +352,14 @@ void SoftGPU::ExecuteOp(u32 op, u32 diff)
 			void *indices = NULL;
 			if ((gstate.vertType & GE_VTYPE_IDX_MASK) != GE_VTYPE_IDX_NONE) {
 				if (!Memory::IsValidAddress(gstate_c.indexAddr)) {
-					ERROR_LOG(G3D, "Bad index address %08x!", gstate_c.indexAddr);
+					ERROR_LOG_REPORT(G3D, "Software: Bad index address %08x!", gstate_c.indexAddr);
 					break;
 				}
 				indices = Memory::GetPointer(gstate_c.indexAddr);
 			}
 
 			if (gstate.getPatchPrimitiveType() != GE_PATCHPRIM_TRIANGLES) {
-				ERROR_LOG(G3D, "Unsupported patch primitive %x", gstate.patchprimitive&3);
+				ERROR_LOG_REPORT(G3D, "Software: Unsupported patch primitive %x", gstate.patchprimitive&3);
 				break;
 			}
 
@@ -476,19 +476,13 @@ void SoftGPU::ExecuteOp(u32 op, u32 diff)
 		break;
 
 	case GE_CMD_FRAMEBUFPTR:
-		{
-			u32 ptr = op & 0xFFE000;
-			fb = Memory::GetPointer(0x44000000 | (gstate.fbptr & 0xFFE000) | ((gstate.fbwidth & 0xFF0000) << 8));
-			DEBUG_LOG(G3D, "DL FramebufPtr: %08x", ptr);
-		}
+		fb = Memory::GetPointer(0x44000000 | (gstate.fbptr & 0xFFFFFF) | ((gstate.fbwidth & 0xFF0000) << 8));
+		DEBUG_LOG(G3D, "DL FramebufPtr: %08x", data);
 		break;
 
 	case GE_CMD_FRAMEBUFWIDTH:
-		{
-			u32 w = data & 0xFFFFFF;
-			fb = Memory::GetPointer(0x44000000 | (gstate.fbptr & 0xFFE000) | ((gstate.fbwidth & 0xFF0000) << 8));
-			DEBUG_LOG(G3D, "DL FramebufWidth: %i", w);
-		}
+		fb = Memory::GetPointer(0x44000000 | (gstate.fbptr & 0xFFFFFF) | ((gstate.fbwidth & 0xFF0000) << 8));
+		DEBUG_LOG(G3D, "DL FramebufWidth: %i", data);
 		break;
 
 	case GE_CMD_FRAMEBUFPIXFORMAT:
@@ -605,19 +599,13 @@ void SoftGPU::ExecuteOp(u32 op, u32 diff)
 		break;
 
 	case GE_CMD_ZBUFPTR:
-		{
-			u32 ptr = op & 0xFFE000;
-			depthbuf = Memory::GetPointer(0x44000000 | (gstate.zbptr & 0xFFE000) | ((gstate.zbwidth & 0xFF0000) << 8));
-			DEBUG_LOG(G3D,"Zbuf Ptr: %06x", ptr);
-		}
+		depthbuf = Memory::GetPointer(0x44000000 | (gstate.zbptr & 0xFFFFFF) | ((gstate.zbwidth & 0xFF0000) << 8));
+		DEBUG_LOG(G3D,"Zbuf Ptr: %06x", data);
 		break;
 
 	case GE_CMD_ZBUFWIDTH:
-		{
-			u32 w = data & 0xFFFFFF;
-			depthbuf = Memory::GetPointer(0x44000000 | (gstate.zbptr & 0xFFE000) | ((gstate.zbwidth & 0xFF0000) << 8));
-			DEBUG_LOG(G3D,"Zbuf Width: %i", w);
-		}
+		depthbuf = Memory::GetPointer(0x44000000 | (gstate.zbptr & 0xFFFFFF) | ((gstate.zbwidth & 0xFF0000) << 8));
+		DEBUG_LOG(G3D,"Zbuf Width: %i", data);
 		break;
 
 	case GE_CMD_AMBIENTCOLOR:

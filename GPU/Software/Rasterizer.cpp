@@ -15,11 +15,12 @@
 // Official git repository and contact information can be found at
 // https://github.com/hrydgard/ppsspp and http://www.ppsspp.org/.
 
-#include "../../Core/MemMap.h"
-#include "../GPUState.h"
+#include "Core/MemMap.h"
+#include "Core/Reporting.h"
+#include "GPU/GPUState.h"
 
-#include "Rasterizer.h"
-#include "Colors.h"
+#include "GPU/Software/Rasterizer.h"
+#include "GPU/Software/Colors.h"
 
 extern u8* fb;
 extern u8* depthbuf;
@@ -85,7 +86,7 @@ static inline u32 LookupColor(unsigned int index, unsigned int level)
 		return DecodeRGBA8888(clut[index + clutSharingOffset]);
 
 	default:
-		ERROR_LOG(G3D, "Unsupported palette format: %x", gstate.getClutPaletteFormat());
+		ERROR_LOG_REPORT(G3D, "Software: Unsupported palette format: %x", gstate.getClutPaletteFormat());
 		return 0;
 	}
 }
@@ -103,19 +104,22 @@ static inline void GetTexelCoordinates(int level, float s, float t, unsigned int
 		if (s > 1.0) s = 1.0;
 		if (s < 0) s = 0;
 	} else {
-		// TODO: Does this work for negative coords?
-		s = fmod(s, 1.0f);
+		// Subtracting floor works for negative and positive to discard the non-fractional part.
+		s -= floor(s);
 	}
 	if (gstate.isTexCoordClampedT()) {
 		if (t > 1.0) t = 1.0;
 		if (t < 0.0) t = 0.0;
 	} else {
-		// TODO: Does this work for negative coords?
-		t = fmod(t, 1.0f);
+		// Subtracting floor works for negative and positive to discard the non-fractional part.
+		t -= floor(t);
 	}
 
 	int width = 1 << (gstate.texsize[level] & 0xf);
 	int height = 1 << ((gstate.texsize[level]>>8) & 0xf);
+
+	// TODO: These should really be multiplied by 256 to get fixed point coordinates
+	// so we can do texture filtering later.
 
 	u = (unsigned int)(s * width); // TODO: width-1 instead?
 	v = (unsigned int)(t * height); // TODO: width-1 instead?
@@ -145,7 +149,7 @@ static inline void GetTextureCoordinates(const VertexData& v0, const VertexData&
 			if (gstate.getUVProjMode() == GE_PROJMAP_POSITION) {
 			source = ((v0.modelpos * w0 + v1.modelpos * w1 + v2.modelpos * w2) / (w0+w1+w2));
 			} else {
-			ERROR_LOG(G3D, "Unsupported UV projection mode %x", gstate.getUVProjMode());
+			ERROR_LOG_REPORT(G3D, "Software: Unsupported UV projection mode %x", gstate.getUVProjMode());
 			}
 
 			Mat3x3<float> tgen(gstate.tgenMatrix);
@@ -155,7 +159,7 @@ static inline void GetTextureCoordinates(const VertexData& v0, const VertexData&
 		}
 		break;
 	default:
-		ERROR_LOG(G3D, "Unsupported texture mapping mode %x!", gstate.getUVGenMode());
+		ERROR_LOG_REPORT(G3D, "Software: Unsupported texture mapping mode %x!", gstate.getUVGenMode());
 		break;
 	}	
 }
@@ -213,7 +217,7 @@ static inline u32 SampleNearest(int level, unsigned int u, unsigned int v)
 			return LookupColor(gstate.transformClutIndex(val), level);
 		}
 	default:
-		ERROR_LOG(G3D, "Unsupported texture format: %x", texfmt);
+		ERROR_LOG_REPORT(G3D, "Software: Unsupported texture format: %x", texfmt);
 		return 0;
 	}
 }
@@ -233,6 +237,9 @@ static inline u32 GetPixelColor(int x, int y)
 
 	case GE_FORMAT_8888:
 		return *(u32*)&fb[4*x + 4*y*gstate.FrameBufStride()];
+
+	case GE_FORMAT_INVALID:
+		_dbg_assert_msg_(G3D, false, "Software: invalid framebuf format.");
 	}
 	return 0;
 }
@@ -255,6 +262,9 @@ static inline void SetPixelColor(int x, int y, u32 value)
 	case GE_FORMAT_8888:
 		*(u32*)&fb[4*x + 4*y*gstate.FrameBufStride()] = value;
 		break;
+
+	case GE_FORMAT_INVALID:
+		_dbg_assert_msg_(G3D, false, "Software: invalid framebuf format.");
 	}
 }
 
@@ -298,7 +308,7 @@ static inline bool DepthTestPassed(int x, int y, u16 z)
 	if (gstate.isModeClear())
 		return true;
 
-	switch (gstate.getDepthTestFunc()) {
+	switch (gstate.getDepthTestFunction()) {
 	case GE_COMP_NEVER:
 		return false;
 
@@ -452,7 +462,9 @@ static inline Vec4<int> GetTextureFunctionOutput(const Vec3<int>& prim_color_rgb
 		break;
 
 	default:
-		ERROR_LOG(G3D, "Unknown texture function %x", gstate.getTextureFunction());
+		ERROR_LOG_REPORT(G3D, "Software: Unknown texture function %x", gstate.getTextureFunction());
+		out_rgb = Vec3<int>::AssignToAll(0);
+		out_a = 0;
 	}
 
 	return Vec4<int>(out_rgb.r(), out_rgb.g(), out_rgb.b(), out_a);
@@ -475,6 +487,10 @@ static inline bool ColorTestPassed(Vec3<int> color)
 
 		case GE_COMP_NOTEQUAL:
 			return c != ref;
+
+		default:
+			ERROR_LOG_REPORT(G3D, "Software: Invalid colortest function: %d", gstate.getColorTestFunction());
+			break;
 	}
 	return true;
 }
@@ -551,7 +567,7 @@ static inline Vec3<int> GetSourceFactor(int source_a, const Vec4<int>& dst)
 		return Vec4<int>::FromRGBA(gstate.getFixA()).rgb();
 
 	default:
-		ERROR_LOG(G3D, "Unknown source factor %x", gstate.getBlendFuncA());
+		ERROR_LOG_REPORT(G3D, "Software: Unknown source factor %x", gstate.getBlendFuncA());
 		return Vec3<int>();
 	}
 }
@@ -593,7 +609,7 @@ static inline Vec3<int> GetDestFactor(const Vec3<int>& source_rgb, int source_a,
 		return Vec4<int>::FromRGBA(gstate.getFixB()).rgb();
 
 	default:
-		ERROR_LOG(G3D, "Unknown dest factor %x", gstate.getBlendFuncB());
+		ERROR_LOG_REPORT(G3D, "Software: Unknown dest factor %x", gstate.getBlendFuncB());
 		return Vec3<int>();
 	}
 }
@@ -629,7 +645,7 @@ static inline Vec3<int> AlphaBlendingResult(const Vec3<int>& source_rgb, int sou
 						::abs(source_rgb.b() - dst.b()));
 
 	default:
-		ERROR_LOG(G3D, "Unknown blend function %x", gstate.getBlendEq());
+		ERROR_LOG_REPORT(G3D, "Software: Unknown blend function %x", gstate.getBlendEq());
 		return Vec3<int>();
 	}
 }

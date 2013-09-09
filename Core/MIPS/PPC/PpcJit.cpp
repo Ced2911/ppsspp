@@ -158,7 +158,7 @@ void Jit::EatInstruction(MIPSOpcode op) {
 
 void Jit::Comp_RunBlock(MIPSOpcode op) {
 	// This shouldn't be necessary, the dispatcher should catch us before we get here.
-	ERROR_LOG(DYNA_REC, "Comp_RunBlock should never be reached!");
+	ERROR_LOG(JIT, "Comp_RunBlock should never be reached!");
 }
 
 void Jit::Comp_DoNothing(MIPSOpcode op) {
@@ -199,8 +199,8 @@ void Jit::ClearCache() {
 	GenerateFixedCode();
 }
 
-void Jit::ClearCacheAt(u32 em_address) {
-	ClearCache();
+void Jit::ClearCacheAt(u32 em_address, int length) {
+	blocks.InvalidateICache(em_address, length);
 }
 
 Jit::Jit(MIPSState *mips) : blocks(mips, this), gpr(mips, &jo),fpr(mips),mips_(mips)
