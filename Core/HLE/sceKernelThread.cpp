@@ -1003,7 +1003,8 @@ bool __KernelCheckResumeThreadEnd(Thread *t, SceUID waitingThreadID, u32 &error,
 		s64 cyclesLeft = CoreTiming::UnscheduleEvent(eventThreadEndTimeout, waitingThreadID);
 		if (timeoutPtr != 0)
 			Memory::Write_U32((u32) cyclesToUs(cyclesLeft), timeoutPtr);
-		__KernelResumeThreadFromWait(waitingThreadID, t->nt.exitStatus);
+		s32 exitStatus = t->nt.exitStatus;
+		__KernelResumeThreadFromWait(waitingThreadID, exitStatus);
 		return true;
 	}
 
