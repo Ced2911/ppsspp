@@ -457,6 +457,11 @@ void __IoInit() {
 	ioManager.SetThreadEnabled(ioManagerThreadEnabled);
 	if (ioManagerThreadEnabled) {
 		ioManagerThread = new std::thread(&__IoManagerThread);
+#ifdef _XBOX
+		SuspendThread(ioManagerThread->native_handle());
+		XSetThreadProcessor(ioManagerThread->native_handle(), 4);
+		ResumeThread(ioManagerThread->native_handle());
+#endif
 	}
 
 	__KernelRegisterWaitTypeFuncs(WAITTYPE_ASYNCIO, __IoAsyncBeginCallback, __IoAsyncEndCallback);
