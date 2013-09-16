@@ -42,6 +42,12 @@
 
 extern int g_iNumVideos;
 
+template <typename T> static void SafeRelease(T obj) {
+	if (obj != NULL && obj != (T)-1) {
+		obj->Release();
+	}
+}
+
 u32 RoundUpToPowerOf2(u32 v)
 {
 	v--;
@@ -88,11 +94,11 @@ void TextureCache::Clear(bool delete_them) {
 	if (delete_them) {
 		for (TexCache::iterator iter = cache.begin(); iter != cache.end(); ++iter) {
 			DEBUG_LOG(G3D, "Deleting texture %i", iter->second.texture);
-			iter->second.texture->Release();
+			SafeRelease(iter->second.texture);
 		}
 		for (TexCache::iterator iter = secondCache.begin(); iter != secondCache.end(); ++iter) {
 			DEBUG_LOG(G3D, "Deleting texture %i", iter->second.texture);
-			iter->second.texture->Release();
+			SafeRelease(iter->second.texture);
 		}
 	}
 	if (cache.size() + secondCache.size()) {
@@ -115,7 +121,7 @@ void TextureCache::Decimate() {
 	int killAge = lowMemoryMode_ ? TEXTURE_KILL_AGE_LOWMEM : TEXTURE_KILL_AGE;
 	for (TexCache::iterator iter = cache.begin(); iter != cache.end(); ) {
 		if (iter->second.lastFrame + TEXTURE_KILL_AGE < gpuStats.numFlips) {
-			iter->second.texture->Release();
+			SafeRelease(iter->second.texture);
 			cache.erase(iter++);
 		}
 		else
@@ -123,7 +129,7 @@ void TextureCache::Decimate() {
 	}
 	for (TexCache::iterator iter = secondCache.begin(); iter != secondCache.end(); ) {
 		if (lowMemoryMode_ || iter->second.lastFrame + TEXTURE_KILL_AGE < gpuStats.numFlips) {
-			iter->second.texture->Release();
+			SafeRelease(iter->second.texture);
 			secondCache.erase(iter++);
 		}
 		else
@@ -1212,7 +1218,7 @@ void TextureCache::SetTexture() {
 					if (entry->texture == lastBoundTexture) {
 						lastBoundTexture = INVALID_TEX;
 					}
-					entry->texture->Release();
+					SafeRelease(entry->texture);
 				}
 			}
 			if (entry->status == TexCacheEntry::STATUS_RELIABLE) {
