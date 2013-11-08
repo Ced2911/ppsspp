@@ -1060,9 +1060,8 @@ static const PPCReg counterReg = R22;
 static const PPCReg tempReg1 = R23;
 static const PPCReg tempReg2 = R24;
 static const PPCReg tempReg3 = R25;
-static const PPCReg scratchReg = R26;
-
-static const PPCReg fpScratchReg = FPR26; 
+static const PPCReg tempReg4 = R26;
+static const PPCReg scratchReg = R27;
 
 static const JitLookup jitLookup[] = {
 	{&VertexDecoderDX9::Step_WeightsU8, &VertexDecoderJitCache::Jit_WeightsU8},
