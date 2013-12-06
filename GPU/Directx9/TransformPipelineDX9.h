@@ -106,6 +106,8 @@ public:
 	bool TestBoundingBox(void* control_points, int vertexCount, u32 vertType);
 
 	void DecodeVerts();
+	void DecodeVertsStep();
+
 	void SetShaderManager(ShaderManagerDX9 *shaderManager) {
 		shaderManager_ = shaderManager;
 	}
@@ -196,6 +198,7 @@ private:
 	int vertexCountInDrawCalls;
 
 	int decimationCounter_;
+	int decodeCounter_;
 
 	UVScale *uvScale;
 };

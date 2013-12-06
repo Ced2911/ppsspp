@@ -175,7 +175,7 @@ void GenerateVertexShaderDX9(int prim, char *buffer, bool useHWTransform) {
 		WRITE(p, "float4x4 u_view;\n");
 		if (gstate.getUVGenMode() == 1)
 			WRITE(p, "float4x4 u_texmtx;\n");
-		if (vertTypeGetWeightMask(vertType) != GE_VTYPE_WEIGHT_NONE) {
+		if (vertTypeIsSkinningEnabled(vertType)) {
 			int numBones = TranslateNumBonesDX9(vertTypeGetNumBoneWeights(vertType));
 #ifdef USE_BONE_ARRAY
 			WRITE(p, "float4x4 u_bone[%i];\n", numBones);
@@ -225,7 +225,7 @@ void GenerateVertexShaderDX9(int prim, char *buffer, bool useHWTransform) {
 		WRITE(p, " struct VS_IN                                \n");
 		WRITE(p, "                                             \n");
 		WRITE(p,  " {                                          \n");
-		if (vertTypeGetWeightMask(vertType) != GE_VTYPE_WEIGHT_NONE) {
+		if (vertTypeIsSkinningEnabled(vertType)) {
 			WRITE(p, "%s", boneWeightAttrDecl[TranslateNumBonesDX9(vertTypeGetNumBoneWeights(vertType))]);
 		}
 		if (doTexture) {
@@ -301,7 +301,7 @@ void GenerateVertexShaderDX9(int prim, char *buffer, bool useHWTransform) {
 		}
 	}  else {
 		// Step 1: World Transform / Skinning
-		if (vertTypeGetWeightMask(vertType) == GE_VTYPE_WEIGHT_NONE) {
+		if (!vertTypeIsSkinningEnabled(vertType)) {
 			// No skinning, just standard T&L.
 			WRITE(p, "  float3 worldpos = mul(float4(In.position.xyz, 1.0), u_world).xyz;\n");
 			if (hasNormal)

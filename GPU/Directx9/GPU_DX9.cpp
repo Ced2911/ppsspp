@@ -1338,9 +1338,13 @@ void DIRECTX9_GPU::ExecuteOpInternal(u32 op, u32 diff) {
 			int num = gstate.boneMatrixNumber & 0x7F;
 			float newVal = getFloat24(data);
 			if (num < 96 && newVal != gstate.boneMatrix[num]) {
-				Flush();
+				// Bone matrices should NOT flush when software skinning is enabled!
+				// TODO: Also check for morph...
+				if (!g_Config.bSoftwareSkinning) {
+					Flush();
+					shaderManager_->DirtyUniform(DIRTY_BONEMATRIX0 << (num / 12));
+				}
 				gstate.boneMatrix[num] = newVal;
-				shaderManager_->DirtyUniform(DIRTY_BONEMATRIX0 << (num / 12));
 			}
 			num++;
 			gstate.boneMatrixNumber = (GE_CMD_BONEMATRIXNUMBER << 24) | (num & 0x7F);
