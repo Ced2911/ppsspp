@@ -1002,11 +1002,11 @@ void VertexDecoderDX9::SetVertexType(u32 fmt, VertexDecoderJitCache *jitCache) {
 			steps_[numSteps_++] = posstep_through[pos];
 			decFmt.posfmt = DEC_FLOAT_3;
 		} else {
-			steps_[numSteps_++] = morphcount == 1 ? posstep[pos] : posstep_morph[pos];
 			if (skinInDecode) {
 				steps_[numSteps_++] = posstep_skin[pos];
 				decFmt.posfmt = DEC_FLOAT_3;
-			} else {
+			}
+			else {
 				steps_[numSteps_++] = morphcount == 1 ? posstep[pos] : posstep_morph[pos];
 
 				if (morphcount == 1) {
