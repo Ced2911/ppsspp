@@ -1248,7 +1248,8 @@ void DIRECTX9_GPU::ExecuteOpInternal(u32 op, u32 diff) {
 	case GE_CMD_MORPHWEIGHT5:
 	case GE_CMD_MORPHWEIGHT6:
 	case GE_CMD_MORPHWEIGHT7:
-		gstate_c.morphWeights[cmd - GE_CMD_MORPHWEIGHT0] = getFloat24(data);
+		//gstate_c.morphWeights[cmd - GE_CMD_MORPHWEIGHT0] = getFloat24(data);
+		((u32 *)gstate_c.morphWeights)[cmd - GE_CMD_MORPHWEIGHT0] = data << 8;
 		break;
 
 	case GE_CMD_DITH0:
@@ -1264,10 +1265,10 @@ void DIRECTX9_GPU::ExecuteOpInternal(u32 op, u32 diff) {
 	case GE_CMD_WORLDMATRIXDATA:
 		{
 			int num = gstate.worldmtxnum & 0xF;
-			float newVal = getFloat24(data);
-			if (num < 12 && newVal != gstate.worldMatrix[num]) {
+			u32 newVal = data << 8;
+			if (num < 12 && newVal != ((const u32 *)gstate.worldMatrix)[num]) {
 				Flush();
-				gstate.worldMatrix[num] = newVal;
+				((u32 *)gstate.worldMatrix)[num] = newVal;
 				shaderManager_->DirtyUniform(DIRTY_WORLDMATRIX);
 			}
 			num++;
@@ -1282,10 +1283,10 @@ void DIRECTX9_GPU::ExecuteOpInternal(u32 op, u32 diff) {
 	case GE_CMD_VIEWMATRIXDATA:
 		{
 			int num = gstate.viewmtxnum & 0xF;
-			float newVal = getFloat24(data);
-			if (num < 12 && newVal != gstate.viewMatrix[num]) {
+			u32 newVal = data << 8;
+			if (num < 12 && newVal != ((const u32 *)gstate.viewMatrix)[num]) {
 				Flush();
-				gstate.viewMatrix[num] = newVal;
+				((u32 *)gstate.viewMatrix)[num] = newVal;
 				shaderManager_->DirtyUniform(DIRTY_VIEWMATRIX);
 			}
 			num++;
@@ -1300,10 +1301,10 @@ void DIRECTX9_GPU::ExecuteOpInternal(u32 op, u32 diff) {
 	case GE_CMD_PROJMATRIXDATA:
 		{
 			int num = gstate.projmtxnum & 0xF;
-			float newVal = getFloat24(data);
-			if (newVal != gstate.projMatrix[num]) {
+			u32 newVal = data << 8;
+			if (newVal != ((const u32 *)gstate.projMatrix)[num]) {
 				Flush();
-				gstate.projMatrix[num] = newVal;
+				((u32 *)gstate.projMatrix)[num] = newVal;
 				shaderManager_->DirtyUniform(DIRTY_PROJMATRIX);
 			}
 			num++;
@@ -1318,10 +1319,10 @@ void DIRECTX9_GPU::ExecuteOpInternal(u32 op, u32 diff) {
 	case GE_CMD_TGENMATRIXDATA:
 		{
 			int num = gstate.texmtxnum & 0xF;
-			float newVal = getFloat24(data);
-			if (num < 12 && newVal != gstate.tgenMatrix[num]) {
+			u32 newVal = data << 8;
+			if (num < 12 && newVal != ((const u32 *)gstate.tgenMatrix)[num]) {
 				Flush();
-				gstate.tgenMatrix[num] = newVal;
+				((u32 *)gstate.tgenMatrix)[num] = newVal;
 				shaderManager_->DirtyUniform(DIRTY_TEXMATRIX);
 			}
 			num++;
@@ -1336,15 +1337,15 @@ void DIRECTX9_GPU::ExecuteOpInternal(u32 op, u32 diff) {
 	case GE_CMD_BONEMATRIXDATA:
 		{
 			int num = gstate.boneMatrixNumber & 0x7F;
-			float newVal = getFloat24(data);
-			if (num < 96 && newVal != gstate.boneMatrix[num]) {
+			u32 newVal = data << 8;
+			if (num < 96 && newVal != ((const u32 *)gstate.boneMatrix)[num]) {
 				// Bone matrices should NOT flush when software skinning is enabled!
 				// TODO: Also check for morph...
 				if (!g_Config.bSoftwareSkinning) {
 					Flush();
 					shaderManager_->DirtyUniform(DIRTY_BONEMATRIX0 << (num / 12));
 				}
-				gstate.boneMatrix[num] = newVal;
+				((u32 *)gstate.boneMatrix)[num] = newVal;
 			}
 			num++;
 			gstate.boneMatrixNumber = (GE_CMD_BONEMATRIXNUMBER << 24) | (num & 0x7F);
