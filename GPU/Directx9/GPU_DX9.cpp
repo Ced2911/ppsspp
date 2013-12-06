@@ -424,6 +424,10 @@ DIRECTX9_GPU::DIRECTX9_GPU()
 		commandFlags_[GE_CMD_TEXOFFSETV] &= ~FLAG_FLUSHBEFOREONCHANGE;
 	}
 
+	if (g_Config.bSoftwareSkinning) {
+		commandFlags_[GE_CMD_VERTEXTYPE] &= ~FLAG_FLUSHBEFOREONCHANGE;
+	}
+
 	BuildReportingInfo();
 }
 
@@ -821,8 +825,21 @@ void DIRECTX9_GPU::ExecuteOpInternal(u32 op, u32 diff) {
 		break;
 
 	case GE_CMD_VERTEXTYPE:
-		if (diff & (GE_VTYPE_TC_MASK | GE_VTYPE_THROUGH_MASK))
-			shaderManager_->DirtyUniform(DIRTY_UVSCALEOFFSET);
+		if (diff) {
+			if (!g_Config.bSoftwareSkinning) {
+				if (diff & (GE_VTYPE_TC_MASK | GE_VTYPE_THROUGH_MASK))
+					shaderManager_->DirtyUniform(DIRTY_UVSCALEOFFSET);
+			} else {
+				if (diff & ~GE_VTYPE_WEIGHTCOUNT_MASK) {
+					// Restore and flush
+					gstate.vertType ^= diff;
+					Flush();
+					gstate.vertType ^= diff;
+					if (diff & (GE_VTYPE_TC_MASK | GE_VTYPE_THROUGH_MASK))
+						shaderManager_->DirtyUniform(DIRTY_UVSCALEOFFSET);
+				}
+			}
+		}
 		break;
 
 	case GE_CMD_REGION1:

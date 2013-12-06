@@ -59,11 +59,16 @@ public:
 	u32 InjectUVs(u8 *decoded, const void *verts, float *customuv, int count) const;
 
 	bool hasColor() const { return col != 0; }
+	bool hasTexcoord() const { return tc != 0; }
 	int VertexSize() const { return size; }  // PSP format size
 
 	void Step_WeightsU8() const;
 	void Step_WeightsU16() const;
 	void Step_WeightsFloat() const;
+
+	void Step_WeightsU8Skin() const;
+	void Step_WeightsU16Skin() const;
+	void Step_WeightsFloatSkin() const;
 
 	void Step_TcU8() const;
 	void Step_TcU16() const;
@@ -77,8 +82,6 @@ public:
 	void Step_TcU16Through() const;
 	void Step_TcU16ThroughDouble() const;
 	void Step_TcFloatThrough() const;
-
-	// TODO: tcmorph
 
 	void Step_Color4444() const;
 	void Step_Color565() const;
@@ -94,6 +97,10 @@ public:
 	void Step_NormalS16() const;
 	void Step_NormalFloat() const;
 
+	void Step_NormalS8Skin() const;
+	void Step_NormalS16Skin() const;
+	void Step_NormalFloatSkin() const;
+
 	void Step_NormalS8Morph() const;
 	void Step_NormalS16Morph() const;
 	void Step_NormalFloatMorph() const;
@@ -101,6 +108,10 @@ public:
 	void Step_PosS8() const;
 	void Step_PosS16() const;
 	void Step_PosFloat() const;
+
+	void Step_PosS8Skin() const;
+	void Step_PosS16Skin() const;
+	void Step_PosFloatSkin() const;
 
 	void Step_PosS8Morph() const;
 	void Step_PosS16Morph() const;
@@ -183,13 +194,24 @@ public:
 	// Returns a pointer to the code to run.
 	JittedVertexDecoder Compile(const VertexDecoderDX9 &dec);
 
-	void Jit_WeightsU8();
+void Jit_WeightsU8();
 	void Jit_WeightsU16();
 	void Jit_WeightsFloat();
+
+	void Jit_WeightsU8Skin();
+	void Jit_WeightsU16Skin();
+	void Jit_WeightsFloatSkin();
 
 	void Jit_TcU8();
 	void Jit_TcU16();
 	void Jit_TcFloat();
+
+	void Jit_TcU8Prescale();
+	void Jit_TcU16Prescale();
+	void Jit_TcFloatPrescale();
+
+	void Jit_TcU16Double();
+	void Jit_TcU16ThroughDouble();
 
 	void Jit_TcU16Through();
 	void Jit_TcFloatThrough();
@@ -203,14 +225,24 @@ public:
 	void Jit_NormalS16();
 	void Jit_NormalFloat();
 
+	void Jit_NormalS8Skin();
+	void Jit_NormalS16Skin();
+	void Jit_NormalFloatSkin();
+
 	void Jit_PosS8();
-	void Jit_PosS8Through();
 	void Jit_PosS16();
-	void Jit_PosS16Through();
 	void Jit_PosFloat();
+	void Jit_PosS8Through();
+	void Jit_PosS16Through();
+
+	void Jit_PosS8Skin();
+	void Jit_PosS16Skin();
+	void Jit_PosFloatSkin();
 
 private:
 	bool CompileStep(const VertexDecoderDX9 &dec, int i);
+	void Jit_ApplyWeights();
+	void Jit_WriteMatrixMul(int outOff, bool pos);
 	const VertexDecoderDX9 *dec_;
 };
 #endif
