@@ -137,6 +137,11 @@ enum
 	DIRTY_ALPHACOLORREF	 = (1 << 5),
 	DIRTY_COLORREF	 = (1 << 6),
 	DIRTY_ALPHACOLORMASK	 = (1 << 7),
+
+
+	// 1 << 6 is free! Wait, not anymore...
+	DIRTY_STENCILREPLACEVALUE = (1 << 6),
+
 	DIRTY_LIGHT0 = (1 << 8),
 	DIRTY_LIGHT1 = (1 << 9),
 	DIRTY_LIGHT2 = (1 << 10),

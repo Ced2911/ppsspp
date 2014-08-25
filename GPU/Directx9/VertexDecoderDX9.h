@@ -48,15 +48,17 @@ public:
 
 	void DecodeVerts(u8 *decoded, const void *verts, int indexLowerBound, int indexUpperBound) const;
 
-	// This could be easily generalized to inject any one component. Don't know another use for it though.
-	u32 InjectUVs(u8 *decoded, const void *verts, float *customuv, int count) const;
-
 	bool hasColor() const { return col != 0; }
+	bool hasTexcoord() const { return tc != 0; }
 	int VertexSize() const { return size; }  // PSP format size
 
 	void Step_WeightsU8() const;
 	void Step_WeightsU16() const;
 	void Step_WeightsFloat() const;
+
+	void Step_WeightsU8Skin() const;
+	void Step_WeightsU16Skin() const;
+	void Step_WeightsFloatSkin() const;
 
 	void Step_TcU8() const;
 	void Step_TcU16() const;
@@ -70,8 +72,6 @@ public:
 	void Step_TcU16Through() const;
 	void Step_TcU16ThroughDouble() const;
 	void Step_TcFloatThrough() const;
-
-	// TODO: tcmorph
 
 	void Step_Color4444() const;
 	void Step_Color565() const;
@@ -87,6 +87,10 @@ public:
 	void Step_NormalS16() const;
 	void Step_NormalFloat() const;
 
+	void Step_NormalS8Skin() const;
+	void Step_NormalS16Skin() const;
+	void Step_NormalFloatSkin() const;
+
 	void Step_NormalS8Morph() const;
 	void Step_NormalS16Morph() const;
 	void Step_NormalFloatMorph() const;
@@ -94,6 +98,10 @@ public:
 	void Step_PosS8() const;
 	void Step_PosS16() const;
 	void Step_PosFloat() const;
+
+	void Step_PosS8Skin() const;
+	void Step_PosS16Skin() const;
+	void Step_PosFloatSkin() const;
 
 	void Step_PosS8Morph() const;
 	void Step_PosS16Morph() const;

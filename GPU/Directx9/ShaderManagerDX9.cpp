@@ -191,9 +191,9 @@ void LinkedShaderDX9::SetFloat(D3DXHANDLE uniform, float value) {
 // Utility
 void LinkedShaderDX9::SetColorUniform3(D3DXHANDLE uniform, u32 color) {
 	const float col[4] = {
-		((color & 0xFF)) / 255.0f,
+		((color & 0xFF0000) >> 16) / 255.0f,
 		((color & 0xFF00) >> 8) / 255.0f,
-		((color & 0xFF0000) >> 16) / 255.0f
+		((color & 0xFF)) / 255.0f,
 	};
 	SetFloatArray(uniform, col, 4);
 }
@@ -265,12 +265,14 @@ void ConvertProjMatrixToD3D(Matrix4x4 & in) {
 	in.zz *= 0.5f;
 	in.wz += 1.f;
 	*/
+	/*
 	Matrix4x4 s;
 	Matrix4x4 t;
 	s.setScaling(Vec3(1, 1, 0.5f));
 	t.setTranslation(Vec3(0, 0, 0.5f));
 	in = in * s;
 	in = in * t;
+	*/
 }
 
 void LinkedShaderDX9::use() {

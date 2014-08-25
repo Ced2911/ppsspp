@@ -205,20 +205,20 @@ static const DeclTypeInfo VComp[] = {
 	{D3DDECLTYPE_FLOAT3		,"D3DDECLTYPE_FLOAT3 "},	// 	DEC_FLOAT_3,
 	{D3DDECLTYPE_FLOAT4		,"D3DDECLTYPE_FLOAT4 "},	// 	DEC_FLOAT_4,
 	// Not supported in regular DX9 so faking, will cause graphics bugs until worked around
-	{D3DDECLTYPE_UBYTE4   ,"D3DDECLTYPE_BYTE4N "},	// 	DEC_S8_3,
+	{D3DDECLTYPE_UBYTE4		,"D3DDECLTYPE_BYTE4N "},	// 	DEC_S8_3,
 
-	{D3DDECLTYPE_SHORT4N	,"D3DDECLTYPE_SHORT4N	"},	// 	DEC_S16_3,
-	{D3DDECLTYPE_UBYTE4N	,"D3DDECLTYPE_UBYTE4N	"},	// 	DEC_U8_1,
-	{D3DDECLTYPE_UBYTE4N	,"D3DDECLTYPE_UBYTE4N	"},	// 	DEC_U8_2,
-	{D3DDECLTYPE_UBYTE4N	,"D3DDECLTYPE_UBYTE4N	"},	// 	DEC_U8_3,
-	{D3DDECLTYPE_UBYTE4N	,"D3DDECLTYPE_UBYTE4N	"},	// 	DEC_U8_4,
-	{D3DDECLTYPE_USHORT2N, "D3DDECLTYPE_USHORT2N " },	// 	DEC_U16_1,
-	{D3DDECLTYPE_USHORT2N, "D3DDECLTYPE_USHORT2N " },	// 	DEC_U16_2,
+	{D3DDECLTYPE_SHORT4N	,"D3DDECLTYPE_SHORT4N"},	// 	DEC_S16_3,
+	{D3DDECLTYPE_UBYTE4N	,"D3DDECLTYPE_UBYTE4N"},	// 	DEC_U8_1,
+	{D3DDECLTYPE_UBYTE4N	,"D3DDECLTYPE_UBYTE4N"},	// 	DEC_U8_2,
+	{D3DDECLTYPE_UBYTE4N	,"D3DDECLTYPE_UBYTE4N"},	// 	DEC_U8_3,
+	{D3DDECLTYPE_UBYTE4N	,"D3DDECLTYPE_UBYTE4N"},	// 	DEC_U8_4,
+	{D3DDECLTYPE_USHORT4N	,"D3DDECLTYPE_USHORT4N " },	// 	DEC_U16_1,
+	{D3DDECLTYPE_USHORT4N	,"D3DDECLTYPE_USHORT4N " },	// 	DEC_U16_2,
 	{D3DDECLTYPE_USHORT4N	,"D3DDECLTYPE_USHORT4N "},	// 	DEC_U16_3,
 	{D3DDECLTYPE_USHORT4N	,"D3DDECLTYPE_USHORT4N "},	// 	DEC_U16_4,
 	// Not supported in regular DX9 so faking, will cause graphics bugs until worked around
-	{D3DDECLTYPE_UBYTE4   ,"D3DDECLTYPE_BYTE4 "},	// 	DEC_U8A_2,
-	{D3DDECLTYPE_USHORT2N,  "D3DDECLTYPE_USHORT4 " },	// 	DEC_U16A_2,
+	{D3DDECLTYPE_UBYTE4		,"D3DDECLTYPE_BYTE4 "},	// 	DEC_U8A_2,
+	{D3DDECLTYPE_USHORT4N	,"D3DDECLTYPE_USHORT4N " },	// 	DEC_U16A_2,
 };
 
 static void VertexAttribSetup(D3DVERTEXELEMENT9 * VertexElement, u8 fmt, u8 offset, u8 usage, u8 usage_index = 0) {
@@ -242,33 +242,33 @@ static void LogDecFmtForDraw(const DecVtxFormat &decFmt) {
 	// Vertices Elements orders
 	// WEIGHT
 	if (decFmt.w0fmt != 0) {
-		printf("decFmt.w0fmt -> %s (%d)\n", VComp[decFmt.w0fmt].name, decFmt.w0off);
+		DEBUG_LOG(G3D, "decFmt.w0fmt -> %s (%d)\n", VComp[decFmt.w0fmt].name, decFmt.w0off);
 	}
 
 	if (decFmt.w1fmt != 0) {
-		printf("decFmt.w1fmt -> %s (%d)\n", VComp[decFmt.w1fmt].name, decFmt.w1off);
+		DEBUG_LOG(G3D, "decFmt.w1fmt -> %s (%d)\n", VComp[decFmt.w1fmt].name, decFmt.w1off);
 	}
 
 	// TC
 	if (decFmt.uvfmt != 0) {
-		printf("decFmt.uvfmt -> %s (%d)\n", VComp[decFmt.uvfmt].name, decFmt.uvoff);
+		DEBUG_LOG(G3D, "decFmt.uvfmt -> %s (%d)\n", VComp[decFmt.uvfmt].name, decFmt.uvoff);
 	}
 
 	// COLOR
 	if (decFmt.c0fmt != 0) {
-		printf("decFmt.c0fmt -> %s (%d)\n", VComp[decFmt.c0fmt].name, decFmt.c0off);
+		DEBUG_LOG(G3D, "decFmt.c0fmt -> %s (%d)\n", VComp[decFmt.c0fmt].name, decFmt.c0off);
 	}
 
 	// NORMAL
 	if (decFmt.nrmfmt != 0) {
-		printf("decFmt.nrmfmt -> %s (%d)\n", VComp[decFmt.nrmfmt].name, decFmt.nrmoff);
+		DEBUG_LOG(G3D, "decFmt.nrmfmt -> %s (%d)\n", VComp[decFmt.nrmfmt].name, decFmt.nrmoff);
 	}
 
 	// POSITION
 	// Always
-	printf("decFmt.posfmt -> %s (%d)\n", VComp[decFmt.posfmt].name, decFmt.posoff);
+	DEBUG_LOG(G3D, "decFmt.posfmt -> %s (%d)\n", VComp[decFmt.posfmt].name, decFmt.posoff);
 
-	printf("decFmt.stride => %d\n", decFmt.stride);
+	DEBUG_LOG(G3D, "decFmt.stride => %d\n", decFmt.stride);
 
 	//pD3Ddevice->SetRenderState(D3DRS_FILLMODE, D3DFILL_WIREFRAME);
 }
@@ -329,7 +329,7 @@ static void SetupDecFmtForDraw(LinkedShaderDX9 *program, const DecVtxFormat &dec
 		if (FAILED(hr)) {
 			// Log
 			LogDecFmtForDraw(decFmt);
-			// DebugBreak();
+			DebugBreak();
 		}
 
 		// Add it to map
@@ -815,7 +815,7 @@ int TransformDrawEngineDX9::EstimatePerVertexCost() {
 	return cost;
 }
 
-void TransformDrawEngineDX9::SubmitPrim(void *verts, void *inds, GEPrimitiveType prim, int vertexCount, u32 vertType, int forceIndexType, int *bytesRead) {
+void TransformDrawEngineDX9::SubmitPrim(void *verts, void *inds, GEPrimitiveType prim, int vertexCount, u32 vertType, int *bytesRead) {
 	if (vertexCount == 0)
 		return;  // we ignore zero-sized draw calls.
 
@@ -842,7 +842,7 @@ void TransformDrawEngineDX9::SubmitPrim(void *verts, void *inds, GEPrimitiveType
 	dc.verts = verts;
 	dc.inds = inds;
 	dc.vertType = vertType;
-	dc.indexType = ((forceIndexType == -1) ? (vertType & GE_VTYPE_IDX_MASK) : forceIndexType) >> GE_VTYPE_IDX_SHIFT;
+	dc.indexType = (vertType & GE_VTYPE_IDX_MASK) >> GE_VTYPE_IDX_SHIFT;
 	dc.prim = prim;
 	dc.vertexCount = vertexCount;
 	if (inds) {
@@ -1061,7 +1061,7 @@ void TransformDrawEngineDX9::DoFlush() {
 			bool useElements = true;
 
 			// Cannot cache vertex data with morph enabled.
-			if (g_Config.bVertexCache && !(lastVType_ & GE_VTYPE_MORPHCOUNT_MASK)) {
+			if (false && g_Config.bVertexCache && !(lastVType_ & GE_VTYPE_MORPHCOUNT_MASK)) {
 				u32 id = ComputeFastDCID();
 				auto iter = vai_.find(id);
 				VertexArrayInfoDX9 *vai;
